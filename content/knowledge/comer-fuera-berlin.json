@@ -1,0 +1,18 @@
+{
+  "titulo": "Comer fuera en Berlín",
+  "subtitulo": "Reglas que funcionan sin contar nada",
+  "reglas": [
+    { "regla": "Proteína primero", "detalle": "Pide algo donde la proteína sea protagonista. Tamaño palma de tu mano + 50%." },
+    { "regla": "Mitad del plato, verduras", "detalle": "Ensalada, parrilla, lo que sea." },
+    { "regla": "Carbohidrato del tamaño de tu puño", "detalle": "Arroz, patatas, pan — un puño, ni más ni menos." },
+    { "regla": "Salsas aparte siempre", "detalle": "Las salsas tienen el 80% de las calorías ocultas." },
+    { "regla": "Bebidas: agua, té, café", "detalle": "Cerveza solo el finde, máx 2." }
+  ],
+  "opciones": [
+    { "sitio": "Bowls (Hans im Glück, Dean & David)", "tip": "Pide proteína extra." },
+    { "sitio": "Currywurst", "tip": "Sin patatas + ensalada al lado." },
+    { "sitio": "Vietnamita / Tailandés", "tip": "Bún (sin freír) o arroz al vapor + curry de pollo o tofu." },
+    { "sitio": "Turco", "tip": "Durum sin salsa cremosa, o iskender pequeño." },
+    { "sitio": "Imbiss", "tip": "Evita döner con salsa de yogur a tope; pide pollo a la parrilla con ensalada." }
+  ]
+}

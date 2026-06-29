@@ -1,0 +1,44 @@
+{
+  "titulo": "Mediciones de la báscula",
+  "nota": "Lo actualiza el entrenador cuando Roxu manda las capturas de la app de la báscula por el chat. Cada medición alimenta los gráficos de composición corporal.",
+  "mediciones": [
+    {
+      "fecha": "2026-02-12",
+      "hora": "09:05",
+      "peso": 87.25,
+      "imc": 25.2,
+      "grasaPct": 25.7,
+      "masaGrasa": 22.4,
+      "tmb": 1667,
+      "musculoPct": 70.4,
+      "masaMuscular": 61.5,
+      "agua": 50.9,
+      "proteinaPct": 15.5,
+      "osea": 3.3,
+      "visceral": 12,
+      "esqueletico": 34.2,
+      "subcutaneaPct": 22.9,
+      "masaSubcutanea": 19.9,
+      "fc": 103
+    },
+    {
+      "fecha": "2026-06-10",
+      "hora": "08:25",
+      "peso": 86.95,
+      "imc": 25.1,
+      "grasaPct": 25.6,
+      "masaGrasa": 22.2,
+      "tmb": 1662,
+      "musculoPct": 70.7,
+      "masaMuscular": 61.5,
+      "agua": 50.9,
+      "proteinaPct": 15.7,
+      "osea": 3.2,
+      "visceral": 12,
+      "esqueletico": 34,
+      "subcutaneaPct": 22.8,
+      "masaSubcutanea": 19.8,
+      "fc": 85
+    }
+  ]
+}

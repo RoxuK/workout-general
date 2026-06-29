@@ -1,0 +1,49 @@
+{
+  "titulo": "Suplementación",
+  "intro": "Lo esencial primero (proteína y creatina) y un par de añadidos que tienen sentido en tu caso: Berlín con poca luz solar y tu foco en la lumbar y la recuperación. Nada mágico: la dieta y el sueño mandan.",
+  "suplementos": [
+    {
+      "nombre": "Creatina monohidrato", "emoji": "⚡", "esencial": true,
+      "dosis": "5 g al día",
+      "cuando": "A cualquier hora, TODOS los días (también en descanso)",
+      "porQue": "El suplemento más probado: más fuerza, más volumen de entrenamiento y mejor recuperación. La constancia diaria es lo que cuenta, no el timing."
+    },
+    {
+      "nombre": "Proteína whey", "emoji": "🥛", "esencial": true,
+      "dosis": "1 scoop (≈25-30 g)",
+      "cuando": "Post-entreno o cuando te cueste llegar a 175 g de proteína",
+      "porQue": "Herramienta práctica para cerrar tu objetivo de proteína diaria preservando músculo en déficit. No es obligatoria si llegas con comida."
+    },
+    {
+      "nombre": "Vitamina D3", "emoji": "☀️", "esencial": true,
+      "dosis": "2000 UI al día (1000-4000 según analítica)",
+      "cuando": "Por la mañana, con una comida con algo de grasa",
+      "porQue": "En Berlín hay poca luz solar gran parte del año y el déficit es muy común. Influye en hueso, fuerza, testosterona, sistema inmune y ánimo."
+    },
+    {
+      "nombre": "Omega-3 (EPA/DHA)", "emoji": "🐟", "esencial": false,
+      "dosis": "1-2 g de EPA+DHA al día",
+      "cuando": "Con una comida principal",
+      "porQue": "Apoyo antiinflamatorio para articulaciones y recuperación (útil con tu lumbar), salud cardiovascular y cerebral. Útil si no comes pescado azul 2-3 veces/semana."
+    },
+    {
+      "nombre": "Magnesio (bisglicinato)", "emoji": "🌙", "esencial": false,
+      "dosis": "300-400 mg",
+      "cuando": "Por la noche, antes de dormir",
+      "porQue": "Ayuda a la relajación muscular y a la calidad del sueño (clave para recuperar la tensión lumbar). El bisglicinato sienta mejor al estómago."
+    },
+    {
+      "nombre": "Cafeína (opcional)", "emoji": "☕", "esencial": false,
+      "dosis": "100-200 mg",
+      "cuando": "30-45 min antes de entrenar — evita después de las 16:00",
+      "porQue": "Mejora rendimiento, fuerza y foco. Un café te sirve. Cuidado por la tarde para no romper el sueño."
+    }
+  ],
+  "protocolo": [
+    { "momento": "Mañana (desayuno)", "hora": "08:00", "items": ["Vitamina D3", "Omega-3"] },
+    { "momento": "Pre-entreno", "hora": "17:15", "items": ["Cafeína (opcional)"] },
+    { "momento": "Post-entreno", "hora": "19:30", "items": ["Proteína whey", "Creatina 5 g"] },
+    { "momento": "Noche", "hora": "22:30", "items": ["Magnesio"] }
+  ],
+  "nota": "En días sin entreno: mantén la creatina (a cualquier hora), la vitamina D y el magnesio. La whey solo si no llegas a la proteína."
+}

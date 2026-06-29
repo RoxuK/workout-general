@@ -1,0 +1,10 @@
+{
+  "titulo": "Lista de la compra · domingo de meal prep",
+  "categorias": [
+    { "nombre": "Proteínas", "items": ["Pollo (1,5 kg)", "Pavo (1 kg)", "Salmón / merluza congelada", "Huevos (docena+)", "Lentejas / garbanzos", "Skyr o yogur griego 0%", "Atún en lata", "Whey protein"] },
+    { "nombre": "Carbohidratos", "items": ["Avena", "Arroz integral o basmati", "Patata o boniato", "Pasta integral", "Pan integral de centeno"] },
+    { "nombre": "Verduras y frutas", "items": ["Espinacas", "Brócoli", "Calabacín", "Pimientos", "Tomate", "Cebolla", "Ajo", "Plátanos", "Manzanas", "Frutos rojos", "Naranjas", "Aguacate"] },
+    { "nombre": "Grasas", "items": ["Aceite de oliva virgen extra", "Frutos secos (almendras, nueces)", "Mantequilla de cacahuete sin azúcar", "Semillas"] },
+    { "nombre": "Para antojos (anti-atracón)", "items": ["Chocolate negro 85% (1 onza/día sin culpa)", "Yogur griego con miel", "Palomitas caseras"] }
+  ]
+}
