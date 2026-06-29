@@ -31,3 +31,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 .claude/
+
+.vercel
+
+# generated exercise catalog (run scripts/build-exercise-catalog.mjs to regenerate)
+content/knowledge/ejercicios-catalogo.json
+exdb.tmp.json
