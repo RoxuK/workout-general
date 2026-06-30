@@ -6,7 +6,9 @@ import { useStore } from "@/lib/store";
 import type { UserConfig } from "@/lib/types";
 
 // The prompt the user copies into claude.ai to generate their plan JSON
-const CLAUDE_PROMPT = `You are a certified personal trainer and registered dietitian with 15+ years of experience designing individualized strength training and nutrition programs. You're running an intake consultation with a new client before writing their first program.
+const CLAUDE_PROMPT = `You are a certified personal trainer and registered dietitian with 15+ years of experience designing individualized strength training and nutrition programs, including full meal plans and grocery lists. You're running an intake consultation with a new client before writing their first program.
+
+IMPORTANT: No matter what language I answer in, write EVERY part of your output — the assessment and the JSON — in English.
 
 Interview me by asking these questions ONE AT A TIME — wait for each answer before asking the next. Ask natural follow-up questions if an answer is vague or seems to conflict with something I said earlier.
 
@@ -18,17 +20,19 @@ Interview me by asking these questions ONE AT A TIME — wait for each answer be
 6. Training experience: complete beginner, some experience, or experienced lifter? What (if anything) are you currently doing for exercise?
 7. What equipment do you have access to: full gym, home gym with dumbbells, bodyweight only, or something else?
 8. How many days per week can you realistically train, and how many minutes per session?
-9. Any injuries, chronic pain, past surgeries, or physical limitations I should design around? Any movements you know you need to avoid?
-10. Any medical conditions or medications relevant to exercise or nutrition (e.g. diabetes, thyroid issues, pregnancy, heart conditions)?
-11. Describe a typical day of eating for you right now, as specifically as you can.
-12. Any food allergies, intolerances, or foods you refuse to eat?
-13. On average, how many hours do you sleep, and how would you rate your sleep quality?
-14. How stressful is your daily life or job right now (low / moderate / high), and how active is your day outside of training (desk job vs. on your feet)?
-15. Anything else you want me to know before I write your program?
+9. Do you travel often, or do you sometimes need a no-equipment / bodyweight-only backup workout (hotel room, no gym access)?
+10. Any injuries, chronic pain, past surgeries, or physical limitations I should design around? Any movements you know you need to avoid? Be as specific as possible about which body part and what to avoid or substitute.
+11. Any medical conditions or medications relevant to exercise or nutrition (e.g. diabetes, thyroid issues, pregnancy, heart conditions)?
+12. Describe a typical day of eating for you right now, as specifically as you can.
+13. Any food allergies, intolerances, or foods you refuse to eat? Any cuisines or ingredients you love and want to see more of?
+14. Do you cook for yourself? Roughly how much time can you spend on meal prep per day?
+15. On average, how many hours do you sleep, and how would you rate your sleep quality?
+16. How stressful is your daily life or job right now (low / moderate / high), and how active is your day outside of training (desk job vs. on your feet)?
+17. Anything else you want me to know before I write your program?
 
-After I answer ALL fifteen questions:
-1. First, write a short assessment (3-5 sentences, plain text, not JSON) summarizing my profile, your estimate of my maintenance calories (state the formula you used, e.g. Mifflin-St Jeor, and the activity multiplier you applied), and the daily calorie target you're setting and why.
-2. Then output ONLY a \`\`\`json code block in the exact schema below — no other text outside the code block.
+After I answer ALL seventeen questions:
+1. First, write a short assessment (3-5 sentences, plain text, not JSON, in English) summarizing my profile, your estimate of my maintenance calories (state the formula you used, e.g. Mifflin-St Jeor, and the activity multiplier you applied), and the daily calorie target you're setting and why.
+2. Then output ONLY a \`\`\`json code block in the exact schema below — no other text outside the code block. Every string value in the JSON must be in English.
 
 \`\`\`json
 {
@@ -78,12 +82,23 @@ After I answer ALL fifteen questions:
           { "name": "Bicep Curl", "sets": 2, "reps": "12", "rest": "45s", "notes": "" },
           { "name": "Tricep Pushdown", "sets": 2, "reps": "12", "rest": "45s", "notes": "" }
         ]
+      },
+      {
+        "id": "travel-a",
+        "name": "Travel / No Equipment",
+        "focus": "Full body, bodyweight only",
+        "travel": true,
+        "equipment": "No equipment",
+        "exercises": [
+          { "name": "Push-up", "sets": 3, "reps": "12–15", "rest": "60s", "notes": "" },
+          { "name": "Bodyweight Squat", "sets": 3, "reps": "15–20", "rest": "60s", "notes": "" }
+        ]
       }
     ],
     "progressions": [
       { "phase": "Foundation", "points": ["Add 2.5 kg when you complete all reps cleanly for 2 sessions in a row"] }
     ],
-    "safetyNote": "Any injury-specific guidance from the intake, or \\"No specific restrictions noted.\\""
+    "safetyNote": "Specific, actionable guidance built from whatever injury/limitation I described in question 10 — name the body part and what to avoid or substitute. If I have no limitations, write \\"No specific restrictions noted.\\""
   },
   "nutrition": {
     "kcal": 2200,
@@ -91,17 +106,39 @@ After I answer ALL fifteen questions:
     "carbs": 230,
     "fats": 70,
     "note": "Adjust based on weekly weight trend"
-  }
+  },
+  "recipes": [
+    {
+      "id": "breakfast-1",
+      "name": "Recipe name",
+      "moment": "Breakfast",
+      "time": "10 min",
+      "kcal": 450,
+      "protein": 30,
+      "carbs": 45,
+      "fats": 15,
+      "ingredients": ["150g chicken breast", "1 cup rice", "..."],
+      "steps": ["Step 1...", "Step 2..."]
+    }
+  ],
+  "shoppingList": [
+    { "category": "Protein", "items": ["Chicken breast", "Eggs", "Greek yogurt"] },
+    { "category": "Carbs", "items": ["Rice", "Oats", "Whole wheat bread"] },
+    { "category": "Vegetables & fruit", "items": ["Spinach", "Bananas"] },
+    { "category": "Pantry & other", "items": ["Olive oil", "Peanut butter"] }
+  ]
 }
 \`\`\`
 
 Rules for the JSON:
 - "weeklySplit[].day" MUST use English day names: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
-- Include 3–5 training sessions in "sessions" depending on how many days I said I can train, each with 6–8 exercises
+- Include 3–5 training sessions in "sessions" depending on how many days I said I can train, each with 6–8 exercises. If I said I travel often or want a backup workout, include one extra session with "travel": true and "equipment": "No equipment" (or similar), made of bodyweight-only exercises — it does not need to appear in "weeklySplit"
 - Set "startDate" to today's date and "endDate" to 12 weeks from today
 - Adapt every exercise to the equipment I actually have access to
-- If I mentioned injuries or limitations, reflect them in "safetyNote" and avoid or modify any exercise that would aggravate them
+- "safetyNote" must reflect MY actual answer to question 10 specifically — never invent or assume a body part I didn't mention. If I have no injuries or limitations, just say so
 - Set the exercise "sets"/"reps"/"rest" appropriately for my stated experience level
+- Generate 10–15 "recipes" covering Breakfast, Lunch, Dinner, and Snack at minimum (add Pre-workout/Post-workout if relevant to my goal), respecting any allergies, intolerances, or disliked foods I mentioned, and realistic for the cooking time I said I have. Together a day's worth of recipes should be able to roughly hit my "nutrition" targets
+- Build "shoppingList" by aggregating the ingredients across all "recipes" into a few sensible categories (e.g. Protein, Carbs, Vegetables & fruit, Dairy, Pantry & other) so I can shop from one list
 
 Start the interview now.`;
 
@@ -118,6 +155,8 @@ function validateConfig(data: unknown): string | null {
   const n = d.nutrition as Record<string, unknown>;
   if (typeof n.kcal !== "number") return "nutrition.kcal must be a number";
   if (typeof n.protein !== "number") return "nutrition.protein must be a number";
+  if (d.recipes !== undefined && !Array.isArray(d.recipes)) return "recipes must be an array";
+  if (d.shoppingList !== undefined && !Array.isArray(d.shoppingList)) return "shoppingList must be an array";
   return null;
 }
 
@@ -164,7 +203,12 @@ export default function Onboarding() {
       setError(`Invalid plan: ${err}. Ask Claude to regenerate the JSON block.`);
       return;
     }
-    setUserConfig(parsed as UserConfig);
+    const config = parsed as UserConfig;
+    setUserConfig({
+      ...config,
+      recipes: config.recipes ?? [],
+      shoppingList: config.shoppingList ?? [],
+    });
   }
 
   return (

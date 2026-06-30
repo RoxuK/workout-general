@@ -101,7 +101,7 @@ export default function PlanPage() {
       {/* Safety note */}
       <div className="mt-5 rounded-2xl border border-bad/40 bg-bad/10 p-4">
         <div className="mb-1 flex items-center gap-2 font-medium text-bad">
-          <AlertTriangle size={16} /> {t("Regla de la lumbar")}
+          <AlertTriangle size={16} /> {t("Nota de seguridad")}
         </div>
         <p className="text-sm text-muted">{t(plan.safetyNote)}</p>
       </div>

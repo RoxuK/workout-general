@@ -57,7 +57,7 @@ export default function Dashboard() {
         (n) => n.cleanDay && new Date(n.date) >= weekStart
       ).length
     : 0;
-  const lastLowerBack = mounted ? workouts.find((w) => w.lowerBack != null)?.lowerBack ?? null : null;
+  const lastSoreness = mounted ? workouts.find((w) => w.soreness != null)?.soreness ?? null : null;
 
   return (
     <div className="animate-fade-up">
@@ -142,9 +142,9 @@ export default function Dashboard() {
         <Stat icon={<ShieldCheck size={16} />} value={`${cleanDaysThisWeek}`} label={t("Días limpios")} />
         <Stat
           icon={<Activity size={16} />}
-          value={lastLowerBack ? `${lastLowerBack}/5` : "—"}
-          label={t("Lumbar")}
-          tone={lastLowerBack != null && lastLowerBack <= 2 ? "bad" : "default"}
+          value={lastSoreness ? `${lastSoreness}/5` : "—"}
+          label={t("Recuperación")}
+          tone={lastSoreness != null && lastSoreness <= 2 ? "bad" : "default"}
         />
       </section>
 
