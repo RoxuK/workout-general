@@ -1,123 +1,104 @@
-import type { Plan, BodyLog, Bascula } from "./types";
-import planBloque1 from "../../content/plans/2026-04-27-bloque-1.json";
-import basculas from "../../content/body/basculas.json";
-import targets from "../../content/nutrition/targets.json";
-import shopping from "../../content/nutrition/shopping.json";
-import recetas from "../../content/nutrition/recetas.json";
-import comidasLibres from "../../content/nutrition/comidas-libres.json";
-import suplementacion from "../../content/nutrition/suplementacion.json";
-import comerFuera from "../../content/knowledge/comer-fuera-berlin.json";
-import lumbar from "../../content/knowledge/recuperacion-lumbar.json";
-import imagenes from "../../content/knowledge/ejercicios-imagenes.json";
+import type { Plan, BodyLog, NutritionTargets } from "./types";
+import freeMeals from "../../content/nutrition/free-meals.json";
+import exerciseImages from "../../content/knowledge/ejercicios-imagenes.json";
 
-// Todos los bloques de entrenamiento generados por el entrenador.
-// Para añadir un bloque nuevo: crea el JSON en /content/plans y añádelo aquí.
-export const PLANES: Plan[] = [planBloque1 as Plan];
+export const FREE_MEALS = freeMeals;
 
-// El plan activo se decide por fecha (el bloque cuyo rango contiene "hoy"),
-// y si ninguno coincide, el último de la lista.
-export function getPlanActivo(hoy = new Date()): Plan {
-  const t = hoy.getTime();
-  const activo = PLANES.find((p) => {
-    const ini = new Date(p.fechaInicio).getTime();
-    const fin = new Date(p.fechaFin).getTime();
-    return t >= ini && t <= fin;
-  });
-  return activo ?? PLANES[PLANES.length - 1];
+// Exercise name -> reference images (free-exercise-db, open license).
+// Keyed by the exact exercise name from a plan, so it only matches when the
+// onboarding-generated plan happens to reuse a name from the source dataset.
+export const EXERCISE_IMAGES: Record<string, { fuente: string | null; imagenes: string[] }> =
+  exerciseImages as any;
+
+export function imagesFor(name: string) {
+  return EXERCISE_IMAGES[name]?.imagenes ?? [];
 }
 
-export const NUTRICION = targets;
-export const SHOPPING = shopping;
-export const RECETAS = recetas;
-export const COMIDAS_LIBRES = comidasLibres;
-export const SUPLEMENTACION = suplementacion;
-export const COMER_FUERA = comerFuera;
-export const LUMBAR = lumbar;
+// Used before onboarding finishes (the page tree still renders behind the
+// AppGate overlay), so every page hook has a safe, empty value to read.
+export const EMPTY_PLAN: Plan = {
+  id: "empty",
+  name: "",
+  startDate: new Date().toISOString().slice(0, 10),
+  endDate: new Date().toISOString().slice(0, 10),
+  startingWeight: 0,
+  targetWeight: 0,
+  frequency: "",
+  structure: "",
+  summary: "",
+  phases: [],
+  weeklySplit: [],
+  splitNote: "",
+  warmup: { duration: "", note: "", steps: [] },
+  sessions: [],
+  progressions: [],
+  safetyNote: "",
+};
 
-// Mediciones de la báscula inteligente: Roxu manda las capturas por el chat
-// y el entrenador las vuelca aquí (content/body/basculas.json).
-export const BASCULAS: Bascula[] = (basculas.mediciones as Bascula[]) ?? [];
+export const EMPTY_NUTRITION: NutritionTargets = { kcal: 0, protein: 0, carbs: 0, fats: 0 };
 
-// Mapa nombre de ejercicio -> imágenes de referencia (free-exercise-db, licencia abierta)
-export const IMAGENES: Record<string, { fuente: string | null; imagenes: string[] }> =
-  imagenes as any;
-
-export function imagenesDe(nombre: string) {
-  return IMAGENES[nombre]?.imagenes ?? [];
+// Effective start date: whatever the user picked in the app takes priority
+// over the plan's fixed date, so the plan adapts to real life.
+export function effectiveStartDate(plan: Plan, override?: string | null) {
+  return override || plan.startDate;
 }
 
-// Fecha de inicio efectiva: la que elija Roxu en la app tiene prioridad
-// sobre la fecha fija del JSON. Así el plan es adaptable.
-export function inicioEfectivo(plan: Plan, override?: string | null) {
-  return override || plan.fechaInicio;
+// Plan week (1-based) from the start date (with optional override).
+export function planWeek(plan: Plan, today = new Date(), override?: string | null) {
+  const start = new Date(effectiveStartDate(plan, override)).getTime();
+  const days = Math.floor((today.getTime() - start) / 86400000);
+  return Math.max(1, Math.floor(days / 7) + 1);
 }
 
-// Semana del plan (1-based) según la fecha de inicio (con posible override).
-export function semanaDelPlan(plan: Plan, hoy = new Date(), override?: string | null) {
-  const ini = new Date(inicioEfectivo(plan, override)).getTime();
-  const dias = Math.floor((hoy.getTime() - ini) / 86400000);
-  return Math.max(1, Math.floor(dias / 7) + 1);
-}
-
-// Número total de semanas que dura el plan (a partir de sus fases).
-export function totalSemanas(plan: Plan) {
+// Total number of weeks the plan runs (derived from its phases).
+export function planTotalWeeks(plan: Plan) {
   let max = 0;
-  for (const f of plan.fases) {
-    const parts = f.semanas.split(/[–-]/).map((s) => parseInt(s.trim(), 10));
+  for (const f of plan.phases) {
+    const parts = f.weeks.split(/[–-]/).map((s) => parseInt(s.trim(), 10));
     max = Math.max(max, parts[parts.length - 1] || 0);
   }
   return max || 12;
 }
 
-// Nombre de la fase activa según la semana (mapea "1–2", "3–6"...).
-export function faseActual(plan: Plan, hoy = new Date(), override?: string | null) {
-  const semana = semanaDelPlan(plan, hoy, override);
-  for (const f of plan.fases) {
-    const [a, b] = f.semanas.split(/[–-]/).map((s) => parseInt(s.trim(), 10));
-    if (semana >= a && semana <= (b || a)) return f.nombre;
+// Name of the active phase based on the current week (maps "1–4", "5–8"...).
+export function currentPhase(plan: Plan, today = new Date(), override?: string | null) {
+  const week = planWeek(plan, today, override);
+  for (const f of plan.phases) {
+    const [a, b] = f.weeks.split(/[–-]/).map((s) => parseInt(s.trim(), 10));
+    if (week >= a && week <= (b || a)) return f.name;
   }
-  return plan.fases[plan.fases.length - 1]?.nombre;
+  return plan.phases[plan.phases.length - 1]?.name;
 }
 
-// ¿Ya ha empezado el plan? (si la fecha efectiva es hoy o anterior)
-export function planEmpezado(plan: Plan, override?: string | null, hoy = new Date()) {
-  const ini = new Date(inicioEfectivo(plan, override));
-  ini.setHours(0, 0, 0, 0);
-  const h = new Date(hoy);
-  h.setHours(0, 0, 0, 0);
-  return h.getTime() >= ini.getTime();
+// Has the plan started yet? (true if the effective start date is today or earlier)
+export function planStarted(plan: Plan, override?: string | null, today = new Date()) {
+  const start = new Date(effectiveStartDate(plan, override));
+  start.setHours(0, 0, 0, 0);
+  const t = new Date(today);
+  t.setHours(0, 0, 0, 0);
+  return t.getTime() >= start.getTime();
 }
 
-// Peso de partida REAL: el primer pesaje (báscula o manual) desde que empieza
-// el plan. Si aún no hay ninguno, el último conocido antes de empezar; y si
-// no hay nada de nada, el estimado del JSON del plan.
-export function pesoInicialEfectivo(plan: Plan, bodyLogs: BodyLog[], override?: string | null) {
-  const ini = new Date(inicioEfectivo(plan, override));
-  ini.setHours(0, 0, 0, 0);
-  const pesos = [
-    ...BASCULAS.filter((m) => m.peso != null).map((m) => ({
-      t: new Date(m.fecha + "T12:00:00").getTime(),
-      peso: m.peso as number,
-    })),
-    ...bodyLogs
-      .filter((b) => b.peso !== "")
-      .map((b) => ({ t: new Date(b.fecha).getTime(), peso: Number(b.peso) })),
-  ].sort((a, b) => a.t - b.t);
-  if (!pesos.length) return plan.pesoInicial;
-  const desde = pesos.find((p) => p.t >= ini.getTime());
-  return (desde ?? pesos[pesos.length - 1]).peso;
+// Real starting weight: the first weigh-in logged since the plan started.
+// Falls back to the last known weigh-in before the plan started, and if
+// there's no data at all, to the plan's estimated starting weight.
+export function effectiveStartingWeight(plan: Plan, bodyLogs: BodyLog[], override?: string | null) {
+  const start = new Date(effectiveStartDate(plan, override));
+  start.setHours(0, 0, 0, 0);
+  const weights = bodyLogs
+    .filter((b) => b.weight !== "")
+    .map((b) => ({ t: new Date(b.date).getTime(), weight: Number(b.weight) }))
+    .sort((a, b) => a.t - b.t);
+  if (!weights.length) return plan.startingWeight;
+  const since = weights.find((w) => w.t >= start.getTime());
+  return (since ?? weights[weights.length - 1]).weight;
 }
 
-// Último peso conocido entre báscula y pesajes manuales (o null si no hay).
-export function ultimoPeso(bodyLogs: BodyLog[]): number | null {
-  const pesos = [
-    ...BASCULAS.filter((m) => m.peso != null).map((m) => ({
-      t: new Date(m.fecha + "T12:00:00").getTime(),
-      peso: m.peso as number,
-    })),
-    ...bodyLogs
-      .filter((b) => b.peso !== "")
-      .map((b) => ({ t: new Date(b.fecha).getTime(), peso: Number(b.peso) })),
-  ].sort((a, b) => b.t - a.t);
-  return pesos[0]?.peso ?? null;
+// Latest known weight from manual weigh-ins (or null if there's none).
+export function latestWeight(bodyLogs: BodyLog[]): number | null {
+  const weights = bodyLogs
+    .filter((b) => b.weight !== "")
+    .map((b) => ({ t: new Date(b.date).getTime(), weight: Number(b.weight) }))
+    .sort((a, b) => b.t - a.t);
+  return weights[0]?.weight ?? null;
 }

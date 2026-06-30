@@ -1,112 +1,91 @@
-export type Ejercicio = {
-  nombre: string;
-  series: number;
+export type Exercise = {
+  name: string;
+  sets: number;
   reps: string;
-  descanso: string;
-  notas?: string;
+  rest: string;
+  notes?: string;
   core?: boolean;
-  lumbar?: boolean;
+  lowerBack?: boolean;
 };
 
-export type Sesion = {
+export type Session = {
   id: string;
-  nombre: string;
-  foco: string;
-  cardioPost?: string;
-  ejercicios: Ejercicio[];
-  /** Sesión de viaje (sin gym / hotel): se lista aparte y no cuenta para el split */
-  viaje?: boolean;
-  /** Equipo necesario, para el chip de la lista ("sin material", "mancuernas"...) */
-  equipo?: string;
-  /** Calentamiento propio (p. ej. de viaje, sin bici estática). Si falta, se usa el del plan. */
-  calentamiento?: {
-    duracion: string;
-    nota: string;
-    pasos: { ejercicio: string; detalle: string }[];
+  name: string;
+  focus: string;
+  postCardio?: string;
+  exercises: Exercise[];
+  /** Travel session (no gym / hotel): listed separately, doesn't count for the split */
+  travel?: boolean;
+  /** Equipment needed, for the chip in the list ("no equipment", "dumbbells"...) */
+  equipment?: string;
+  /** Own warmup (e.g. for travel, no stationary bike). Falls back to the plan's warmup if missing. */
+  warmup?: {
+    duration: string;
+    note: string;
+    steps: { exercise: string; detail: string }[];
   };
 };
 
-export type Fase = { nombre: string; semanas: string; objetivo: string; rpe: string };
+export type Phase = { name: string; weeks: string; goal: string; rpe: string };
 
 export type Plan = {
   id: string;
-  nombre: string;
-  fechaInicio: string;
-  fechaFin: string;
-  pesoInicial: number;
-  pesoObjetivo: number;
-  frecuencia: string;
-  estructura: string;
-  resumen: string;
-  fases: Fase[];
-  splitSemanal: { dia: string; sesion: string }[];
-  notaSplit: string;
-  calentamiento: {
-    duracion: string;
-    nota: string;
-    pasos: { ejercicio: string; detalle: string }[];
+  name: string;
+  startDate: string;
+  endDate: string;
+  startingWeight: number;
+  targetWeight: number;
+  frequency: string;
+  structure: string;
+  summary: string;
+  phases: Phase[];
+  weeklySplit: { day: string; session: string }[];
+  splitNote: string;
+  warmup: {
+    duration: string;
+    note: string;
+    steps: { exercise: string; detail: string }[];
   };
-  sesiones: Sesion[];
-  progresiones: { fase: string; puntos: string[] }[];
-  reglaLumbar: string;
+  sessions: Session[];
+  progressions: { phase: string; points: string[] }[];
+  safetyNote: string;
 };
 
-// --- Registros locales (IndexedDB / localStorage) ---
+// --- Local records (IndexedDB / localStorage) ---
 
 export type SetLog = { kg: number | ""; reps: number | "" };
 
-export type EjercicioLog = {
-  nombre: string;
+export type ExerciseLog = {
+  name: string;
   sets: SetLog[];
 };
 
 export type WorkoutLog = {
   id: string;
-  fecha: string; // ISO
-  sesionId: string;
-  sesionNombre: string;
-  ejercicios: EjercicioLog[];
+  date: string; // ISO
+  sessionId: string;
+  sessionName: string;
+  exercises: ExerciseLog[];
   rpe: number | null;
-  lumbar: number | null; // 1 (mal) - 5 (perfecto)
-  notas: string;
+  lowerBack: number | null; // 1 (bad) - 5 (perfect)
+  notes: string;
 };
 
 export type BodyLog = {
   id: string;
-  fecha: string;
-  peso: number | "";
-  cintura: number | "";
-  cadera: number | "";
-  pecho: number | "";
-  brazo: number | "";
-  muslo: number | "";
-  grasa: number | "";
-  // Opcionales: si el pesaje viene de la báscula inteligente
-  masaMuscular?: number | "";
-  visceral?: number | "";
-  agua?: number | "";
-  notas: string;
-};
-
-// Medición completa de la báscula (content/body/basculas.json, la mantiene el entrenador)
-export type Bascula = {
-  fecha: string;
-  hora?: string;
-  peso?: number;
-  imc?: number;
-  grasaPct?: number;
-  masaGrasa?: number;
-  tmb?: number;
-  musculoPct?: number;
-  masaMuscular?: number;
-  agua?: number;
-  proteinaPct?: number;
-  osea?: number;
-  visceral?: number;
-  esqueletico?: number;
-  subcutaneaPct?: number;
-  masaSubcutanea?: number;
-  fc?: number;
+  date: string;
+  weight: number | "";
+  waist: number | "";
+  hip: number | "";
+  chest: number | "";
+  arm: number | "";
+  thigh: number | "";
+  bodyFat: number | "";
+  // Optional: if the weigh-in comes from a smart scale
+  muscleMass?: number | "";
+  visceralFat?: number | "";
+  water?: number | "";
+  notes: string;
 };
 
 export type Reminder = {
@@ -116,17 +95,16 @@ export type Reminder = {
   emoji: string;
   time: string; // "HH:MM"
   enabled: boolean;
-  weekday?: number | null; // 0=domingo … 6=sábado; null/ausente = todos los días
-  url?: string;            // a dónde lleva la notificación al tocarla
+  weekday?: number | null; // 0=Sunday … 6=Saturday; null/absent = every day
+  url?: string;            // where the notification leads when tapped
 };
 
-// Comida fuera del recetario apuntada a mano (catálogo, raciones de mano o genérica)
 export type NutritionTargets = {
   kcal: number;
-  proteina: number;
-  carbos: number;
-  grasas: number;
-  nota?: string;
+  protein: number;
+  carbs: number;
+  fats: number;
+  note?: string;
 };
 
 export type UserConfig = {
@@ -134,22 +112,23 @@ export type UserConfig = {
   nutrition: NutritionTargets;
 };
 
-export type ComidaLibre = {
+// Meal logged outside the recipe book (catalog, hand-portion estimate, or generic)
+export type FreeMeal = {
   id: string;
-  nombre: string;
+  name: string;
   kcal: number;
   p: number;
   c: number;
   g: number;
 };
 
-export type NutricionLog = {
-  fecha: string; // YYYY-MM-DD (una por día)
-  proteinaOk: boolean;
-  comioFuera: boolean;
-  hidratacionOk: boolean;
-  suenoOk: boolean;
-  antojo: boolean;
-  diaLimpio: boolean;
-  notas: string;
+export type NutritionLog = {
+  date: string; // YYYY-MM-DD (one per day)
+  proteinGoalMet: boolean;
+  ateOut: boolean;
+  hydrationGoalMet: boolean;
+  sleepGoalMet: boolean;
+  craving: boolean;
+  cleanDay: boolean;
+  notes: string;
 };

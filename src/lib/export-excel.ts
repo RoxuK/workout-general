@@ -1,11 +1,5 @@
-import type { WorkoutLog, BodyLog, NutricionLog, Plan, ComidaLibre } from "./types";
-import { semanaDelPlan, pesoInicialEfectivo, ultimoPeso, BASCULAS } from "./content";
-
-// "36P / 52C / 10G" → { p, c, g }
-function parseMacros(s: string) {
-  const m = s.match(/(\d+)P[^0-9]*(\d+)C[^0-9]*(\d+)G/);
-  return m ? { p: +m[1], c: +m[2], g: +m[3] } : { p: 0, c: 0, g: 0 };
-}
+import type { WorkoutLog, BodyLog, NutritionLog, Plan, FreeMeal } from "./types";
+import { planWeek, effectiveStartingWeight, latestWeight } from "./content";
 
 function fmt(d: string) {
   const dt = new Date(d);
@@ -27,173 +21,122 @@ export type ExportOpts = {
   planStart: string | null;
   workouts: WorkoutLog[];
   bodyLogs: BodyLog[];
-  nutricion: Record<string, NutricionLog>;
-  comidasDia: Record<string, string[]>;
-  comidasLibres?: Record<string, ComidaLibre[]>;
-  suplementosDia: Record<string, string[]>;
-  recetas: any[];
+  nutrition: Record<string, NutritionLog>;
+  freeMeals?: Record<string, FreeMeal[]>;
 };
 
 /**
- * Genera y descarga un .xlsx con el MISMO formato que Seguimiento_Roxu.xlsx:
- * hojas Pesajes, Entrenos y Nutricion, con sus columnas exactas.
+ * Generates and downloads a .xlsx with Weigh-ins, Workouts and Nutrition sheets.
  */
 export async function exportExcel(opts: ExportOpts) {
   const XLSX = await import("xlsx");
-  const { plan, planStart, workouts, bodyLogs, nutricion, comidasDia, suplementosDia, recetas } = opts;
-  const comidasLibres = opts.comidasLibres ?? {};
-  const recById = new Map(recetas.map((r) => [r.id, r]));
+  const { plan, planStart, workouts, bodyLogs, nutrition } = opts;
+  const freeMeals = opts.freeMeals ?? {};
   const wb = XLSX.utils.book_new();
 
-  // ── Resumen ────────────────────────────────────────────────────────────────
-  const pesoBase = pesoInicialEfectivo(plan, bodyLogs, planStart);
-  const pesoUltN = ultimoPeso(bodyLogs) ?? pesoBase;
-  const perdido = +(pesoBase - pesoUltN).toFixed(1);
-  const nutVals = Object.values(nutricion);
-  const limpios = nutVals.filter((n) => n.diaLimpio).length;
-  const adher = nutVals.length ? Math.round((limpios / nutVals.length) * 100) : 0;
-  const resumen = [
-    ["PLAN ROXU — Seguimiento", null],
-    ["Plan", plan.nombre],
-    ["Inicio del plan", planStart ? fmt(planStart) : fmt(plan.fechaInicio)],
-    ["Exportado", fmt(new Date().toISOString())],
+  // ── Summary ──────────────────────────────────────────────────────────────
+  const baseWeight = effectiveStartingWeight(plan, bodyLogs, planStart);
+  const lastWeight = latestWeight(bodyLogs) ?? baseWeight;
+  const lost = +(baseWeight - lastWeight).toFixed(1);
+  const nutVals = Object.values(nutrition);
+  const clean = nutVals.filter((n) => n.cleanDay).length;
+  const adherence = nutVals.length ? Math.round((clean / nutVals.length) * 100) : 0;
+  const summary = [
+    ["TRAINING PLAN — Summary", null],
+    ["Plan", plan.name],
+    ["Plan start", planStart ? fmt(planStart) : fmt(plan.startDate)],
+    ["Exported", fmt(new Date().toISOString())],
     [null, null],
-    ["Peso inicial (kg)", pesoBase],
-    ["Peso objetivo (kg)", plan.pesoObjetivo],
-    ["Último peso (kg)", pesoUltN],
-    ["Kg perdidos", perdido],
-    ["Semana actual", semanaDelPlan(plan, new Date(), planStart)],
-    ["Sesiones registradas", workouts.length],
-    ["Pesajes registrados", bodyLogs.length],
-    ["Días de nutrición", nutVals.length],
-    ["Adherencia nutrición (%)", adher],
+    ["Starting weight (kg)", baseWeight],
+    ["Target weight (kg)", plan.targetWeight],
+    ["Latest weight (kg)", lastWeight],
+    ["Kg lost", lost],
+    ["Current week", planWeek(plan, new Date(), planStart)],
+    ["Sessions logged", workouts.length],
+    ["Weigh-ins logged", bodyLogs.length],
+    ["Nutrition days logged", nutVals.length],
+    ["Nutrition adherence (%)", adherence],
   ];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumen), "Resumen");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), "Summary");
 
-  // ── Pesajes (manuales + báscula, en orden cronológico) ────────────────────
-  const pesoHdr = [
-    "Semana", "Fecha", "Peso (kg)", "Cintura (cm)", "Cadera (cm)", "Pecho (cm)",
-    "Brazo (cm)", "Muslo (cm)", "% Grasa (báscula)", "Masa muscular (kg)",
-    "Grasa visceral", "% Agua", "Variación peso", "Notas / sensaciones",
+  // ── Weigh-ins ────────────────────────────────────────────────────────────
+  const weightHdr = [
+    "Week", "Date", "Weight (kg)", "Waist (cm)", "Hip (cm)", "Chest (cm)",
+    "Arm (cm)", "Thigh (cm)", "Body fat %", "Muscle mass (kg)",
+    "Visceral fat", "Water %", "Weight change", "Notes",
   ];
-  type FilaPesaje = { fecha: string; peso: number | ""; cintura: any; cadera: any; pecho: any; brazo: any; muslo: any; grasa: any; musc: any; visc: any; agua: any; notas: string };
-  const filas: FilaPesaje[] = [
-    ...bodyLogs.map((b) => ({
-      fecha: b.fecha, peso: b.peso, cintura: b.cintura, cadera: b.cadera,
-      pecho: b.pecho, brazo: b.brazo, muslo: b.muslo, grasa: b.grasa,
-      musc: b.masaMuscular ?? "", visc: b.visceral ?? "", agua: b.agua ?? "",
-      notas: b.notas,
-    })),
-    ...BASCULAS.map((m) => ({
-      fecha: m.fecha + "T12:00:00", peso: m.peso ?? ("" as const), cintura: "", cadera: "",
-      pecho: "", brazo: "", muslo: "", grasa: m.grasaPct ?? "",
-      musc: m.masaMuscular ?? "", visc: m.visceral ?? "", agua: m.agua ?? "",
-      notas: "Báscula (capturas vía entrenador)",
-    })),
-  ].sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
-
-  let prevPeso: number | null = null;
-  const pesoRows = filas.map((b) => {
-    const peso = b.peso === "" ? null : Number(b.peso);
-    const vari = peso != null && prevPeso != null ? +(peso - prevPeso).toFixed(1) : "";
-    if (peso != null) prevPeso = peso;
+  const sorted = [...bodyLogs].sort((a, b) => (a.date < b.date ? -1 : 1));
+  let prevWeight: number | null = null;
+  const weightRows = sorted.map((b) => {
+    const weight = b.weight === "" ? null : Number(b.weight);
+    const change = weight != null && prevWeight != null ? +(weight - prevWeight).toFixed(1) : "";
+    if (weight != null) prevWeight = weight;
     return [
-      semanaDelPlan(plan, new Date(b.fecha), planStart),
-      fmt(b.fecha), b.peso, b.cintura, b.cadera, b.pecho,
-      b.brazo, b.muslo, b.grasa, b.musc, b.visc, b.agua, vari, b.notas,
+      planWeek(plan, new Date(b.date), planStart),
+      fmt(b.date), b.weight, b.waist, b.hip, b.chest,
+      b.arm, b.thigh, b.bodyFat, b.muscleMass ?? "", b.visceralFat ?? "", b.water ?? "", change, b.notes,
     ];
   });
-  const wsPeso = XLSX.utils.aoa_to_sheet([pesoHdr, ...pesoRows]);
-  wsPeso["!cols"] = [{ wch: 7 }, { wch: 11 }, { wch: 9 }, { wch: 11 }, { wch: 11 }, { wch: 10 }, { wch: 9 }, { wch: 9 }, { wch: 15 }, { wch: 16 }, { wch: 12 }, { wch: 8 }, { wch: 13 }, { wch: 30 }];
-  XLSX.utils.book_append_sheet(wb, wsPeso, "Pesajes");
+  const wsWeight = XLSX.utils.aoa_to_sheet([weightHdr, ...weightRows]);
+  wsWeight["!cols"] = [{ wch: 7 }, { wch: 11 }, { wch: 9 }, { wch: 11 }, { wch: 11 }, { wch: 10 }, { wch: 9 }, { wch: 9 }, { wch: 12 }, { wch: 16 }, { wch: 12 }, { wch: 8 }, { wch: 13 }, { wch: 30 }];
+  XLSX.utils.book_append_sheet(wb, wsWeight, "Weigh-ins");
 
-  // ── Báscula (todas las métricas de la app de la báscula) ──────────────────
-  if (BASCULAS.length) {
-    const basHdr = [
-      "Fecha", "Peso (kg)", "IMC", "% Grasa", "Masa grasa (kg)", "TMB (kcal)",
-      "% Músculo", "Masa muscular (kg)", "% Agua", "% Proteína", "Masa ósea (kg)",
-      "Grasa visceral", "Músculo esquelético (kg)", "% Grasa subcutánea",
-      "Masa grasa subcutánea (kg)", "FC (ppm)",
-    ];
-    const basRows = BASCULAS.map((m) => [
-      fmt(m.fecha + "T12:00:00"), m.peso ?? "", m.imc ?? "", m.grasaPct ?? "",
-      m.masaGrasa ?? "", m.tmb ?? "", m.musculoPct ?? "", m.masaMuscular ?? "",
-      m.agua ?? "", m.proteinaPct ?? "", m.osea ?? "", m.visceral ?? "",
-      m.esqueletico ?? "", m.subcutaneaPct ?? "", m.masaSubcutanea ?? "", m.fc ?? "",
-    ]);
-    const wsBas = XLSX.utils.aoa_to_sheet([basHdr, ...basRows]);
-    wsBas["!cols"] = basHdr.map(() => ({ wch: 13 }));
-    XLSX.utils.book_append_sheet(wb, wsBas, "Bascula");
-  }
-
-  // ── Entrenos ──────────────────────────────────────────────────────────────
-  const entHdr = [
-    "Fecha", "Sesión", "Ejercicio", "Serie 1 (kg x reps)", "Serie 2 (kg x reps)",
-    "Serie 3 (kg x reps)", "Serie 4 (kg x reps)", "RPE (1-10)", "Sensación lumbar (1-5)", "Notas",
+  // ── Workouts ─────────────────────────────────────────────────────────────
+  const workoutHdr = [
+    "Date", "Session", "Exercise", "Set 1 (kg x reps)", "Set 2 (kg x reps)",
+    "Set 3 (kg x reps)", "Set 4 (kg x reps)", "RPE (1-10)", "Lower back (1-5)", "Notes",
   ];
-  const wk = [...workouts].sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
-  const entRows: any[][] = [];
+  const wk = [...workouts].sort((a, b) => (a.date < b.date ? -1 : 1));
+  const workoutRows: any[][] = [];
   for (const w of wk) {
-    w.ejercicios.forEach((e, idx) => {
-      entRows.push([
-        idx === 0 ? fmt(w.fecha) : "",
-        idx === 0 ? w.sesionNombre : "",
-        e.nombre,
+    w.exercises.forEach((e, idx) => {
+      workoutRows.push([
+        idx === 0 ? fmt(w.date) : "",
+        idx === 0 ? w.sessionName : "",
+        e.name,
         setStr(e.sets[0]), setStr(e.sets[1]), setStr(e.sets[2]), setStr(e.sets[3]),
         idx === 0 ? (w.rpe ?? "") : "",
-        idx === 0 ? (w.lumbar ?? "") : "",
-        idx === 0 ? w.notas : "",
+        idx === 0 ? (w.lowerBack ?? "") : "",
+        idx === 0 ? w.notes : "",
       ]);
     });
   }
-  const wsEnt = XLSX.utils.aoa_to_sheet([entHdr, ...entRows]);
-  wsEnt["!cols"] = [{ wch: 11 }, { wch: 12 }, { wch: 30 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 10 }, { wch: 18 }, { wch: 30 }];
-  XLSX.utils.book_append_sheet(wb, wsEnt, "Entrenos");
+  const wsWorkouts = XLSX.utils.aoa_to_sheet([workoutHdr, ...workoutRows]);
+  wsWorkouts["!cols"] = [{ wch: 11 }, { wch: 12 }, { wch: 30 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 10 }, { wch: 14 }, { wch: 30 }];
+  XLSX.utils.book_append_sheet(wb, wsWorkouts, "Workouts");
 
-  // ── Nutricion ─────────────────────────────────────────────────────────────
+  // ── Nutrition ────────────────────────────────────────────────────────────
   const nutHdr = [
-    "Fecha", "Calorías comidas", "Proteína (g)", "Comidas fuera", "Hidratación (L)",
-    "Sueño (h)", "Antojos / atracones", "Día limpio (✓/✗)", "Recetas del día",
-    "Suplementos tomados", "Notas",
+    "Date", "Calories eaten", "Protein (g)", "Ate out", "Hydration",
+    "Sleep", "Cravings", "Clean day (✓/✗)", "Free meals logged", "Notes",
   ];
-  const dias = Array.from(
-    new Set([
-      ...Object.keys(nutricion), ...Object.keys(comidasDia),
-      ...Object.keys(comidasLibres), ...Object.keys(suplementosDia),
-    ])
-  ).sort();
-  const nutRows = dias.map((d) => {
-    const log = nutricion[d];
-    const ids = comidasDia[d] || [];
+  const days = Array.from(new Set([...Object.keys(nutrition), ...Object.keys(freeMeals)])).sort();
+  const nutRows = days.map((d) => {
+    const log = nutrition[d];
     let kcal = 0, prot = 0;
-    const nombres: string[] = [];
-    for (const id of ids) {
-      const r = recById.get(id);
-      if (r) { kcal += r.kcal; prot += parseMacros(r.macros).p; nombres.push(r.nombre); }
-    }
-    for (const x of comidasLibres[d] || []) {
+    const names: string[] = [];
+    for (const x of freeMeals[d] || []) {
       kcal += x.kcal;
       prot += x.p;
-      nombres.push(`${x.nombre} (libre)`);
+      names.push(x.name);
     }
     return [
       fmt(d),
       kcal || "",
       prot || "",
-      log?.comioFuera ? "Sí" : "",
-      log?.hidratacionOk ? 3 : "",
-      log?.suenoOk ? "7-8" : "",
-      log?.antojo ? "Sí" : "",
-      log ? (log.diaLimpio ? "✓" : "✗") : "",
-      nombres.join(" · "),
-      (suplementosDia[d] || []).join(" · "),
-      log?.notas || "",
+      log?.ateOut ? "Yes" : "",
+      log?.hydrationGoalMet ? "Met" : "",
+      log?.sleepGoalMet ? "Met" : "",
+      log?.craving ? "Yes" : "",
+      log ? (log.cleanDay ? "✓" : "✗") : "",
+      names.join(" · "),
+      log?.notes || "",
     ];
   });
   const wsNut = XLSX.utils.aoa_to_sheet([nutHdr, ...nutRows]);
-  wsNut["!cols"] = [{ wch: 11 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 10 }, { wch: 18 }, { wch: 15 }, { wch: 40 }, { wch: 35 }, { wch: 30 }];
-  XLSX.utils.book_append_sheet(wb, wsNut, "Nutricion");
+  wsNut["!cols"] = [{ wch: 11 }, { wch: 15 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 40 }, { wch: 30 }];
+  XLSX.utils.book_append_sheet(wb, wsNut, "Nutrition");
 
-  const fecha = new Date().toISOString().slice(0, 10);
-  XLSX.writeFile(wb, `Seguimiento_Roxu_${fecha}.xlsx`);
+  const date = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(wb, `training-log_${date}.xlsx`);
 }

@@ -2,54 +2,47 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { WorkoutLog, BodyLog, NutricionLog, Reminder, ComidaLibre, UserConfig } from "./types";
+import type { WorkoutLog, BodyLog, NutritionLog, Reminder, FreeMeal, UserConfig } from "./types";
 import { dayKey } from "./utils";
 
 export const DEFAULT_REMINDERS: Reminder[] = [
-  { id: "entreno", label: "Hora de entrenar 🏋️", body: "Tu sesión de hoy te espera. ¡Vamos!", emoji: "🏋️", time: "18:00", enabled: true },
-  { id: "vitd", label: "Vitamina D + Omega-3 ☀️", body: "Tómalas con el desayuno.", emoji: "☀️", time: "08:00", enabled: true },
-  { id: "creatina", label: "Creatina + Proteína ⚡", body: "5 g de creatina y tu batido post-entreno.", emoji: "⚡", time: "19:30", enabled: true },
-  { id: "magnesio", label: "Magnesio 🌙", body: "Para recuperar y dormir mejor.", emoji: "🌙", time: "22:30", enabled: true },
-  { id: "agua", label: "Hidratación 💧", body: "¿Vas por buen camino con los 3 L de agua?", emoji: "💧", time: "13:00", enabled: false },
-  { id: "movilidad", label: "Movilidad lumbar 🧘", body: "5 min: psoas, gato-vaca, rotaciones. Sobre todo si hoy hubo shibari.", emoji: "🧘", time: "21:00", enabled: false },
-  { id: "checkin", label: "Check-in semanal ⚖️", body: "Pésate y apunta tus medidas: 2 minutos y listo.", emoji: "⚖️", time: "09:00", enabled: false, weekday: 1, url: "/checkin" },
+  { id: "workout", label: "Time to train 🏋️", body: "Today's session is waiting. Let's go!", emoji: "🏋️", time: "18:00", enabled: true },
+  { id: "vitd", label: "Vitamin D + Omega-3 ☀️", body: "Take them with breakfast.", emoji: "☀️", time: "08:00", enabled: true },
+  { id: "creatine", label: "Creatine + Protein ⚡", body: "5 g of creatine and your post-workout shake.", emoji: "⚡", time: "19:30", enabled: true },
+  { id: "magnesium", label: "Magnesium 🌙", body: "For recovery and better sleep.", emoji: "🌙", time: "22:30", enabled: true },
+  { id: "water", label: "Hydration 💧", body: "On track with your water for today?", emoji: "💧", time: "13:00", enabled: false },
+  { id: "mobility", label: "Mobility work 🧘", body: "5 min: hip flexors, cat-cow, rotations.", emoji: "🧘", time: "21:00", enabled: false },
+  { id: "checkin", label: "Weekly check-in ⚖️", body: "Weigh in and log your measurements: 2 minutes, done.", emoji: "⚖️", time: "09:00", enabled: false, weekday: 1, url: "/checkin" },
 ];
 
 type State = {
   workouts: WorkoutLog[];
   bodyLogs: BodyLog[];
-  nutricion: Record<string, NutricionLog>; // por dayKey
-  comidasDia: Record<string, string[]>;    // dayKey → [recipeId, ...] recetas comidas ese día
-  comidasLibres: Record<string, ComidaLibre[]>; // dayKey → comidas fuera del recetario
-  suplementosDia: Record<string, string[]>; // dayKey → [momento, ...] tomas marcadas ese día
-  planStart: string | null;                 // YYYY-MM-DD — fecha real en que Roxu empieza el plan
-  agenda: Record<string, string>;           // dayKey → sesionId que Roxu decide entrenar ese día
+  nutrition: Record<string, NutritionLog>; // by dayKey
+  freeMeals: Record<string, FreeMeal[]>;   // dayKey -> off-plan meals logged that day
+  planStart: string | null;                // YYYY-MM-DD — real date the user starts the plan
+  schedule: Record<string, string>;        // dayKey -> sessionId the user decides to train that day
   _hydrated: boolean;
 
   addWorkout: (w: WorkoutLog) => void;
   updateWorkout: (id: string, patch: Partial<WorkoutLog>) => void;
   deleteWorkout: (id: string) => void;
-  lastWorkoutFor: (sesionId: string) => WorkoutLog | undefined;
+  lastWorkoutFor: (sessionId: string) => WorkoutLog | undefined;
 
   addBody: (b: BodyLog) => void;
   updateBody: (id: string, patch: Partial<BodyLog>) => void;
   deleteBody: (id: string) => void;
   lastBody: () => BodyLog | undefined;
 
-  setNutricion: (n: NutricionLog) => void;
-  getNutricion: (day?: string) => NutricionLog | undefined;
+  setNutritionLog: (n: NutritionLog) => void;
+  getNutritionLog: (day?: string) => NutritionLog | undefined;
 
-  toggleRecetaDia: (fecha: string, recipeId: string) => void;
-  getComidasDia: (fecha?: string) => string[];
-
-  addComidaLibre: (fecha: string, item: ComidaLibre) => void;
-  removeComidaLibre: (fecha: string, id: string) => void;
-
-  toggleSuplementoDia: (fecha: string, momento: string) => void;
+  addFreeMeal: (date: string, item: FreeMeal) => void;
+  removeFreeMeal: (date: string, id: string) => void;
 
   setPlanStart: (date: string | null) => void;
 
-  setAgenda: (fecha: string, sesionId: string | null) => void;
+  setSchedule: (date: string, sessionId: string | null) => void;
 
   lang: "es" | "en";
   setLang: (l: "es" | "en") => void;
@@ -57,7 +50,7 @@ type State = {
   reminders: Reminder[];
   updateReminder: (id: string, patch: Partial<Reminder>) => void;
 
-  importData: (data: Partial<Pick<State, "workouts" | "bodyLogs" | "nutricion" | "comidasDia" | "comidasLibres" | "suplementosDia" | "planStart" | "agenda">>) => void;
+  importData: (data: Partial<Pick<State, "workouts" | "bodyLogs" | "nutrition" | "freeMeals" | "planStart" | "schedule">>) => void;
   clearAll: () => void;
 
   userName: string | null;
@@ -67,7 +60,7 @@ type State = {
   resetUser: () => void;
 };
 
-const empty = { workouts: [], bodyLogs: [], nutricion: {}, comidasDia: {}, comidasLibres: {}, suplementosDia: {}, planStart: null, agenda: {} };
+const empty = { workouts: [], bodyLogs: [], nutrition: {}, freeMeals: {}, planStart: null, schedule: {} };
 const emptyUser = { userName: null, userConfig: null };
 
 export const useStore = create<State>()(
@@ -75,75 +68,56 @@ export const useStore = create<State>()(
     (set, get) => ({
       ...empty,
       ...emptyUser,
-      lang: "es",
+      lang: "en",
       setLang: (l) => set({ lang: l }),
       reminders: DEFAULT_REMINDERS,
       _hydrated: false,
 
       addWorkout: (w) =>
-        set((s) => ({ workouts: [w, ...s.workouts].sort(byFechaDesc) })),
+        set((s) => ({ workouts: [w, ...s.workouts].sort(byDateDesc) })),
       updateWorkout: (id, patch) =>
         set((s) => ({
-          workouts: s.workouts.map((w) => (w.id === id ? { ...w, ...patch } : w)).sort(byFechaDesc),
+          workouts: s.workouts.map((w) => (w.id === id ? { ...w, ...patch } : w)).sort(byDateDesc),
         })),
       deleteWorkout: (id) =>
         set((s) => ({ workouts: s.workouts.filter((w) => w.id !== id) })),
-      lastWorkoutFor: (sesionId) =>
-        get().workouts.find((w) => w.sesionId === sesionId),
+      lastWorkoutFor: (sessionId) =>
+        get().workouts.find((w) => w.sessionId === sessionId),
 
       addBody: (b) =>
-        set((s) => ({ bodyLogs: [b, ...s.bodyLogs].sort(byFechaDesc) })),
+        set((s) => ({ bodyLogs: [b, ...s.bodyLogs].sort(byDateDesc) })),
       updateBody: (id, patch) =>
         set((s) => ({
-          bodyLogs: s.bodyLogs.map((b) => (b.id === id ? { ...b, ...patch } : b)).sort(byFechaDesc),
+          bodyLogs: s.bodyLogs.map((b) => (b.id === id ? { ...b, ...patch } : b)).sort(byDateDesc),
         })),
       deleteBody: (id) =>
         set((s) => ({ bodyLogs: s.bodyLogs.filter((b) => b.id !== id) })),
       lastBody: () => get().bodyLogs[0],
 
-      setNutricion: (n) =>
-        set((s) => ({ nutricion: { ...s.nutricion, [n.fecha]: n } })),
-      getNutricion: (day = dayKey()) => get().nutricion[day],
+      setNutritionLog: (n) =>
+        set((s) => ({ nutrition: { ...s.nutrition, [n.date]: n } })),
+      getNutritionLog: (day = dayKey()) => get().nutrition[day],
 
-      toggleRecetaDia: (fecha, recipeId) =>
-        set((s) => {
-          const cur = s.comidasDia[fecha] ?? [];
-          const next = cur.includes(recipeId)
-            ? cur.filter((id) => id !== recipeId)
-            : [...cur, recipeId];
-          return { comidasDia: { ...s.comidasDia, [fecha]: next } };
-        }),
-      getComidasDia: (fecha = dayKey()) => get().comidasDia[fecha] ?? [],
-
-      addComidaLibre: (fecha, item) =>
+      addFreeMeal: (date, item) =>
         set((s) => ({
-          comidasLibres: { ...s.comidasLibres, [fecha]: [...(s.comidasLibres[fecha] ?? []), item] },
+          freeMeals: { ...s.freeMeals, [date]: [...(s.freeMeals[date] ?? []), item] },
         })),
-      removeComidaLibre: (fecha, id) =>
+      removeFreeMeal: (date, id) =>
         set((s) => ({
-          comidasLibres: {
-            ...s.comidasLibres,
-            [fecha]: (s.comidasLibres[fecha] ?? []).filter((x) => x.id !== id),
+          freeMeals: {
+            ...s.freeMeals,
+            [date]: (s.freeMeals[date] ?? []).filter((x) => x.id !== id),
           },
         })),
 
-      toggleSuplementoDia: (fecha, momento) =>
-        set((s) => {
-          const cur = s.suplementosDia[fecha] ?? [];
-          const next = cur.includes(momento)
-            ? cur.filter((m) => m !== momento)
-            : [...cur, momento];
-          return { suplementosDia: { ...s.suplementosDia, [fecha]: next } };
-        }),
-
       setPlanStart: (date) => set({ planStart: date }),
 
-      setAgenda: (fecha, sesionId) =>
+      setSchedule: (date, sessionId) =>
         set((s) => {
-          const next = { ...s.agenda };
-          if (sesionId === null) delete next[fecha];
-          else next[fecha] = sesionId;
-          return { agenda: next };
+          const next = { ...s.schedule };
+          if (sessionId === null) delete next[date];
+          else next[date] = sessionId;
+          return { schedule: next };
         }),
 
       updateReminder: (id, patch) =>
@@ -153,14 +127,12 @@ export const useStore = create<State>()(
 
       importData: (data) =>
         set((s) => ({
-          workouts: (data.workouts ?? s.workouts).slice().sort(byFechaDesc),
-          bodyLogs: (data.bodyLogs ?? s.bodyLogs).slice().sort(byFechaDesc),
-          nutricion: data.nutricion ?? s.nutricion,
-          comidasDia: data.comidasDia ?? s.comidasDia,
-          comidasLibres: data.comidasLibres ?? s.comidasLibres,
-          suplementosDia: data.suplementosDia ?? s.suplementosDia,
+          workouts: (data.workouts ?? s.workouts).slice().sort(byDateDesc),
+          bodyLogs: (data.bodyLogs ?? s.bodyLogs).slice().sort(byDateDesc),
+          nutrition: data.nutrition ?? s.nutrition,
+          freeMeals: data.freeMeals ?? s.freeMeals,
           planStart: data.planStart !== undefined ? data.planStart : s.planStart,
-          agenda: data.agenda ?? s.agenda,
+          schedule: data.schedule ?? s.schedule,
         })),
       clearAll: () => set({ ...empty }),
 
@@ -170,9 +142,12 @@ export const useStore = create<State>()(
     }),
     {
       name: "roxu-fit-v1",
-      version: 2,
-      // Añade a los datos ya guardados los recordatorios nuevos que no existían
-      migrate: (persisted: any) => {
+      version: 3,
+      // v3 renamed every field from Spanish to English (fecha -> date, etc.).
+      // Older persisted data isn't shape-compatible, so start fresh instead
+      // of carrying over now-mismatched keys.
+      migrate: (persisted: any, version) => {
+        if (version < 3) return { reminders: DEFAULT_REMINDERS };
         if (persisted?.reminders) {
           const ids = new Set(persisted.reminders.map((r: any) => r.id));
           for (const d of DEFAULT_REMINDERS) {
@@ -188,6 +163,6 @@ export const useStore = create<State>()(
   )
 );
 
-function byFechaDesc(a: { fecha: string }, b: { fecha: string }) {
-  return a.fecha < b.fecha ? 1 : -1;
+function byDateDesc(a: { date: string }, b: { date: string }) {
+  return a.date < b.date ? 1 : -1;
 }

@@ -1,17 +1,17 @@
 "use client";
 
 import { useStore } from "./store";
-import { getPlanActivo, NUTRICION } from "./content";
+import { EMPTY_PLAN, EMPTY_NUTRITION } from "./content";
 import type { Plan, NutritionTargets } from "./types";
 
 export function useActivePlan(): Plan {
   const userConfig = useStore((s) => s.userConfig);
-  return (userConfig?.plan ?? getPlanActivo()) as Plan;
+  return userConfig?.plan ?? EMPTY_PLAN;
 }
 
-export function useNutritionTargets(): NutritionTargets & { kcal: number } {
+export function useNutritionTargets(): NutritionTargets {
   const userConfig = useStore((s) => s.userConfig);
-  return (userConfig?.nutrition ?? NUTRICION) as NutritionTargets & { kcal: number };
+  return userConfig?.nutrition ?? EMPTY_NUTRITION;
 }
 
 export function useUserName(): string | null {

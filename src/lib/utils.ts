@@ -14,27 +14,27 @@ export function todayISO() {
 }
 
 export function dayKey(d: Date = new Date()) {
-  // YYYY-MM-DD en hora local
+  // YYYY-MM-DD in local time
   const off = d.getTimezoneOffset();
   return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
 }
 
 export function fmtDate(iso: string) {
   const d = new Date(iso);
-  return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short" });
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
 }
 
 export function fmtDateLong(iso: string) {
   const d = new Date(iso);
-  return d.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
+  return d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
 }
 
-const DIAS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
-export function nombreDia(d: Date = new Date()) {
-  return DIAS[d.getDay()];
+const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+export function dayName(d: Date = new Date()) {
+  return DAYS[d.getDay()];
 }
 
-// Mejor set de un ejercicio (mayor kg, desempate por reps)
+// Best set of an exercise (highest kg, ties broken by reps)
 export function bestSet(sets: { kg: number | ""; reps: number | "" }[]) {
   let best: { kg: number; reps: number } | null = null;
   for (const s of sets) {
