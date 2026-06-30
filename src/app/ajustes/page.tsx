@@ -5,7 +5,8 @@ import Link from "next/link";
 import { Download, Upload, Trash2, Smartphone, Check, Bell, ChevronRight, FileSpreadsheet, Palette } from "lucide-react";
 import Header from "@/components/Header";
 import { useStore } from "@/lib/store";
-import { getPlanActivo, RECETAS } from "@/lib/content";
+import { RECETAS } from "@/lib/content";
+import { useActivePlan } from "@/lib/user-content";
 import { exportExcel } from "@/lib/export-excel";
 import { THEMES, getTheme, applyTheme, type ThemeId } from "@/lib/theme";
 import { useT } from "@/lib/i18n";
@@ -22,6 +23,8 @@ export default function Ajustes() {
   const agenda = useStore((s) => s.agenda);
   const importData = useStore((s) => s.importData);
   const clearAll = useStore((s) => s.clearAll);
+  const resetUser = useStore((s) => s.resetUser);
+  const plan = useActivePlan();
   const t = useT();
   const fileRef = useRef<HTMLInputElement>(null);
   const [msg, setMsg] = useState("");
@@ -41,7 +44,7 @@ export default function Ajustes() {
   async function exportarExcel() {
     try {
       await exportExcel({
-        plan: getPlanActivo(),
+        plan,
         planStart,
         workouts,
         bodyLogs,
@@ -150,6 +153,16 @@ export default function Ajustes() {
           className="btn w-full justify-start gap-3 border border-bad/40 bg-bad/10 text-bad"
         >
           <Trash2 size={18} /> {t("Borrar todos los datos")}
+        </button>
+        <button
+          onClick={() => {
+            if (confirm("This will delete your plan and all data, and take you back to setup. Continue?")) {
+              resetUser();
+            }
+          }}
+          className="btn w-full justify-start gap-3 border border-bad/40 bg-bad/10 text-bad"
+        >
+          <Trash2 size={18} /> Reset / Switch user
         </button>
       </div>
 

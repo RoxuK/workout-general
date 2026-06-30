@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Copy, Download, Share2, Check, FileSpreadsheet } from "lucide-react";
 import Header from "@/components/Header";
-import { getPlanActivo, RECETAS, SUPLEMENTACION, pesoInicialEfectivo, ultimoPeso } from "@/lib/content";
+import { RECETAS, SUPLEMENTACION, pesoInicialEfectivo, ultimoPeso } from "@/lib/content";
+import { useActivePlan } from "@/lib/user-content";
 import { useT } from "@/lib/i18n";
 import { useStore } from "@/lib/store";
 import { bestSet, fmtDate } from "@/lib/utils";
@@ -21,7 +22,7 @@ export default function Reportes() {
   const [copied, setCopied] = useState(false);
   const t = useT();
 
-  const plan = getPlanActivo();
+  const plan = useActivePlan();
   const workouts = useStore((s) => s.workouts);
   const bodyLogs = useStore((s) => s.bodyLogs);
   const nutricion = useStore((s) => s.nutricion);
