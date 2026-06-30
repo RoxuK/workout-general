@@ -15,7 +15,8 @@ import {
 import Link from "next/link";
 import { Plus, Trash2, Trophy, Dumbbell, LineChart as LineChartIcon, Camera, X, Images, ClipboardCheck, ChevronRight, Pencil, Check, Activity } from "lucide-react";
 import Header from "@/components/Header";
-import { getPlanActivo, BASCULAS } from "@/lib/content";
+import { BASCULAS } from "@/lib/content";
+import { useActivePlan } from "@/lib/user-content";
 import { useStore } from "@/lib/store";
 import type { BodyLog } from "@/lib/types";
 import { uid, dayKey, fmtDate, bestSet } from "@/lib/utils";
@@ -25,7 +26,7 @@ import { useT } from "@/lib/i18n";
 export default function Progreso() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  const plan = getPlanActivo();
+  const plan = useActivePlan();
 
   const bodyLogs = useStore((s) => s.bodyLogs);
   const workouts = useStore((s) => s.workouts);
@@ -54,7 +55,7 @@ export default function Progreso() {
     ]
       .sort((a, b) => a.t - b.t)
       .map((p) => ({ ...p, fecha: fmtDate(new Date(p.t).toISOString()) }));
-    // Media móvil de 7 días: suaviza el agua/glucógeno y enseña la tendencia real
+    // Media móvil de 7 días: suaviza el agua/glucogeno y enseña la tendencia real
     return pts.map((p) => {
       const ventana = pts.filter((q) => q.t <= p.t && q.t >= p.t - 7 * 86400000);
       const media = ventana.reduce((a, q) => a + q.peso, 0) / ventana.length;
@@ -344,7 +345,7 @@ export default function Progreso() {
   );
 }
 
-// ─── Fila de entreno editable ────────────────────────────────────────────────
+// ─── Fila de entreno editable ────────────────────────────────────────────
 
 function WorkoutRow({
   w,
@@ -465,7 +466,7 @@ function WorkoutRow({
   );
 }
 
-// ─── Composición corporal ────────────────────────────────────────────────────
+// ─── Composición corporal ───────────────────────────────────────────
 // Mezcla las mediciones de la báscula (capturas que Roxu manda al chat y el
 // entrenador vuelca en content/body/basculas.json) con los pesajes manuales.
 
@@ -581,7 +582,7 @@ function ComposicionSection({ bodyLogs }: { bodyLogs: BodyLog[] }) {
   );
 }
 
-// ─── Fotos de progreso ───────────────────────────────────────────────────────
+// ─── Fotos de progreso ──────────────────────────────────────────────────────────────────────
 
 function PhotosSection() {
   const t = useT();
