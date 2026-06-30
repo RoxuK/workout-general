@@ -3,13 +3,12 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, Hand, Minus, Plus, UtensilsCrossed, X, Zap } from "lucide-react";
-import { COMIDAS_LIBRES } from "@/lib/content";
+import { FREE_MEALS } from "@/lib/content";
 import { useStore } from "@/lib/store";
-import type { ComidaLibre } from "@/lib/types";
 import { dayKey, uid } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 
-type Tab = "catalogo" | "mano" | "rapido";
+type Tab = "catalog" | "hand" | "quick";
 
 export default function ComidaLibreButton() {
   const [open, setOpen] = useState(false);
@@ -28,30 +27,30 @@ export default function ComidaLibreButton() {
 }
 
 function Sheet({ onClose }: { onClose: () => void }) {
-  const C = COMIDAS_LIBRES as any;
-  const hoy = dayKey();
+  const C = FREE_MEALS as any;
+  const today = dayKey();
   const tr = useT();
-  const addComidaLibre = useStore((s) => s.addComidaLibre);
+  const addFreeMeal = useStore((s) => s.addFreeMeal);
 
-  const [tab, setTab] = useState<Tab>("catalogo");
-  const [tam, setTam] = useState("M");
+  const [tab, setTab] = useState<Tab>("catalog");
+  const [size, setSize] = useState("M");
   const [added, setAdded] = useState("");
 
-  function add(nombre: string, kcal: number, p: number, c: number, g: number) {
-    addComidaLibre(hoy, {
+  function add(name: string, kcal: number, p: number, c: number, g: number) {
+    addFreeMeal(today, {
       id: uid(),
-      nombre,
+      name,
       kcal: Math.round(kcal),
       p: Math.round(p),
       c: Math.round(c),
       g: Math.round(g),
     });
-    setAdded(nombre);
+    setAdded(name);
     setTimeout(() => setAdded(""), 1400);
   }
 
-  const factor = (C.tamanos as any[]).find((t) => t.id === tam)?.factor ?? 1;
-  const tamLabel = (C.tamanos as any[]).find((t) => t.id === tam)?.label ?? "Normal";
+  const factor = (C.sizes as any[]).find((t) => t.id === size)?.factor ?? 1;
+  const sizeLabel = (C.sizes as any[]).find((t) => t.id === size)?.label ?? "Normal";
 
   return createPortal(
     <div
@@ -64,8 +63,8 @@ function Sheet({ onClose }: { onClose: () => void }) {
       >
         <div className="flex items-start justify-between gap-3 p-4 pb-0">
           <div>
-            <h3 className="font-display text-xl leading-tight">{tr(C.titulo)}</h3>
-            <p className="mt-1 text-[11px] text-muted">{tr(C.subtitulo)}</p>
+            <h3 className="font-display text-xl leading-tight">{tr(C.title)}</h3>
+            <p className="mt-1 text-[11px] text-muted">{tr(C.subtitle)}</p>
           </div>
           <button
             onClick={onClose}
@@ -77,12 +76,12 @@ function Sheet({ onClose }: { onClose: () => void }) {
 
         {/* Tabs */}
         <div className="flex gap-2 p-4 pb-2">
-          <TabBtn on={tab === "catalogo"} onClick={() => setTab("catalogo")} label={tr("Catálogo")} />
-          <TabBtn on={tab === "mano"} onClick={() => setTab("mano")} label={tr("A ojo ✋")} />
-          <TabBtn on={tab === "rapido"} onClick={() => setTab("rapido")} label={tr("Rápido")} />
+          <TabBtn on={tab === "catalog"} onClick={() => setTab("catalog")} label={tr("Catálogo")} />
+          <TabBtn on={tab === "hand"} onClick={() => setTab("hand")} label={tr("A ojo ✋")} />
+          <TabBtn on={tab === "quick"} onClick={() => setTab("quick")} label={tr("Rápido")} />
         </div>
 
-        {/* Aviso de añadido */}
+        {/* Added notice */}
         {added && (
           <div className="mx-4 mb-1 flex items-center gap-2 rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-xs text-good animate-fade-up">
             <Check size={14} /> {tr(added)} {tr("añadido a hoy")}
@@ -90,15 +89,15 @@ function Sheet({ onClose }: { onClose: () => void }) {
         )}
 
         <div className="min-h-0 flex-1 overflow-y-auto p-4 pt-2">
-          {tab === "catalogo" && (
+          {tab === "catalog" && (
             <>
               <div className="mb-3 flex gap-2">
-                {(C.tamanos as any[]).map((tt) => (
+                {(C.sizes as any[]).map((tt) => (
                   <button
                     key={tt.id}
-                    onClick={() => setTam(tt.id)}
+                    onClick={() => setSize(tt.id)}
                     className={`flex-1 rounded-xl border py-2 text-xs transition ${
-                      tam === tt.id ? "border-accent bg-accent-soft text-accent" : "border-line text-muted"
+                      size === tt.id ? "border-accent bg-accent-soft text-accent" : "border-line text-muted"
                     }`}
                   >
                     {tr(tt.label)}
@@ -111,7 +110,7 @@ function Sheet({ onClose }: { onClose: () => void }) {
                     key={it.id}
                     onClick={() =>
                       add(
-                        `${it.nombre}${tam !== "M" ? ` (${tamLabel.toLowerCase()})` : ""}`,
+                        `${it.name}${size !== "M" ? ` (${sizeLabel.toLowerCase()})` : ""}`,
                         it.kcal * factor, it.p * factor, it.c * factor, it.g * factor
                       )
                     }
@@ -120,7 +119,7 @@ function Sheet({ onClose }: { onClose: () => void }) {
                     <span className="flex min-w-0 items-center gap-2.5">
                       <span className="text-xl">{it.emoji}</span>
                       <span className="min-w-0">
-                        <span className="block truncate text-sm">{tr(it.nombre)}</span>
+                        <span className="block truncate text-sm">{tr(it.name)}</span>
                         <span className="block text-[10px] text-muted">
                           {Math.round(it.p * factor)}P / {Math.round(it.c * factor)}C / {Math.round(it.g * factor)}G
                         </span>
@@ -133,28 +132,28 @@ function Sheet({ onClose }: { onClose: () => void }) {
                   </button>
                 ))}
               </div>
-              <p className="mt-3 text-[10px] text-muted">{tr(C.nota)}</p>
+              <p className="mt-3 text-[10px] text-muted">{tr(C.note)}</p>
             </>
           )}
 
-          {tab === "mano" && <ManoEstimator onAdd={add} />}
+          {tab === "hand" && <HandEstimator onAdd={add} />}
 
-          {tab === "rapido" && (
+          {tab === "quick" && (
             <div className="space-y-2">
               <p className="mb-2 text-[11px] text-muted">
                 {tr("Para días de cero ganas de pensar: un registro aproximado vale más que ninguno.")}
               </p>
-              {(C.genericas as any[]).map((gItem) => (
+              {(C.genericOptions as any[]).map((gItem) => (
                 <button
                   key={gItem.id}
-                  onClick={() => add(gItem.nombre, gItem.kcal, gItem.p, gItem.c, gItem.g)}
+                  onClick={() => add(gItem.name, gItem.kcal, gItem.p, gItem.c, gItem.g)}
                   className="flex w-full items-center justify-between gap-2 rounded-xl border border-line bg-surface-2 px-3 py-3 text-left transition active:scale-[0.99]"
                 >
                   <span className="flex items-center gap-2.5">
                     <Zap size={16} className="shrink-0 text-accent" />
                     <span>
-                      <span className="block text-sm">{tr(gItem.nombre)}</span>
-                      <span className="block text-[10px] text-muted">{tr(gItem.detalle)}</span>
+                      <span className="block text-sm">{tr(gItem.name)}</span>
+                      <span className="block text-[10px] text-muted">{tr(gItem.detail)}</span>
                     </span>
                   </span>
                   <span className="shrink-0 font-display tabular-nums text-accent">{gItem.kcal} <span className="text-[10px] text-muted">kcal</span></span>
@@ -182,19 +181,19 @@ function TabBtn({ on, onClick, label }: { on: boolean; onClick: () => void; labe
   );
 }
 
-// Estimador por raciones de mano: el método de los entrenadores cuando no hay báscula
-function ManoEstimator({
+// Hand-portion estimator: the method coaches use when there's no scale around
+function HandEstimator({
   onAdd,
 }: {
-  onAdd: (nombre: string, kcal: number, p: number, c: number, g: number) => void;
+  onAdd: (name: string, kcal: number, p: number, c: number, g: number) => void;
 }) {
-  const C = COMIDAS_LIBRES as any;
+  const C = FREE_MEALS as any;
   const tr = useT();
-  const raciones = C.manual.raciones as any[];
-  const [counts, setCounts] = useState<Record<string, number>>({ palma: 1, puno: 1, pulgar: 1 });
-  const [nombre, setNombre] = useState("");
+  const portions = C.handPortions.portions as any[];
+  const [counts, setCounts] = useState<Record<string, number>>({ palm: 1, fist: 1, thumb: 1 });
+  const [name, setName] = useState("");
 
-  const total = raciones.reduce(
+  const total = portions.reduce(
     (acc, r) => {
       const n = counts[r.id] ?? 0;
       return { kcal: acc.kcal + r.kcal * n, p: acc.p + r.p * n, c: acc.c + r.c * n, g: acc.g + r.g * n };
@@ -204,9 +203,9 @@ function ManoEstimator({
 
   return (
     <div>
-      <p className="mb-3 text-[11px] text-muted">{tr(C.manual.intro)}</p>
+      <p className="mb-3 text-[11px] text-muted">{tr(C.handPortions.intro)}</p>
       <div className="space-y-2">
-        {raciones.map((r) => {
+        {portions.map((r) => {
           const n = counts[r.id] ?? 0;
           return (
             <div key={r.id} className="flex items-center justify-between gap-2 rounded-xl border border-line bg-surface-2 px-3 py-2.5">
@@ -214,7 +213,7 @@ function ManoEstimator({
                 <span className="text-xl">{r.emoji}</span>
                 <span className="min-w-0">
                   <span className="block text-sm">{tr(r.label)}</span>
-                  <span className="block text-[10px] leading-tight text-muted">{tr(r.detalle)}</span>
+                  <span className="block text-[10px] leading-tight text-muted">{tr(r.detail)}</span>
                 </span>
               </span>
               <span className="flex shrink-0 items-center gap-2">
@@ -236,11 +235,11 @@ function ManoEstimator({
       <input
         className="input mt-3 text-sm"
         placeholder={tr("¿Qué era? (opcional, p. ej. «curry del tailandés»)")}
-        value={nombre}
-        onChange={(e) => setNombre(e.target.value)}
+        value={name}
+        onChange={(e) => setName(e.target.value)}
       />
       <button
-        onClick={() => onAdd(nombre.trim() || "Comida estimada a ojo", total.kcal, total.p, total.c, total.g)}
+        onClick={() => onAdd(name.trim() || "Comida estimada a ojo", total.kcal, total.p, total.c, total.g)}
         disabled={total.kcal <= 0}
         className="btn-accent mt-2 w-full gap-2"
       >

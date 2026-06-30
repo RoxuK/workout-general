@@ -12,7 +12,7 @@ function monday(d: Date) {
   return x;
 }
 
-type Stats = { entrenos: number; tonelaje: number; limpios: number; registrados: number };
+type Stats = { workouts: number; tonnage: number; clean: number; logged: number };
 
 export default function WeeklySummary() {
   const [mounted, setMounted] = useState(false);
@@ -20,65 +20,65 @@ export default function WeeklySummary() {
 
   const workouts = useStore((s) => s.workouts);
   const bodyLogs = useStore((s) => s.bodyLogs);
-  const nutricion = useStore((s) => s.nutricion);
+  const nutrition = useStore((s) => s.nutrition);
   const t = useT();
 
   const data = useMemo(() => {
     if (!mounted) return null;
-    const hoy = new Date();
-    const iniSemana = monday(hoy);
-    const iniPrev = new Date(iniSemana);
-    iniPrev.setDate(iniPrev.getDate() - 7);
+    const today = new Date();
+    const weekStart = monday(today);
+    const prevStart = new Date(weekStart);
+    prevStart.setDate(prevStart.getDate() - 7);
 
-    const calc = (desde: Date, hasta: Date): Stats => {
+    const calc = (from: Date, to: Date): Stats => {
       const wk = workouts.filter((w) => {
-        const t = new Date(w.fecha).getTime();
-        return t >= desde.getTime() && t < hasta.getTime();
+        const t = new Date(w.date).getTime();
+        return t >= from.getTime() && t < to.getTime();
       });
       let ton = 0;
       for (const w of wk)
-        for (const e of w.ejercicios)
+        for (const e of w.exercises)
           for (const s of e.sets) {
             const kg = typeof s.kg === "number" ? s.kg : 0;
             const reps = typeof s.reps === "number" ? s.reps : 0;
             if (kg > 0 && reps > 0) ton += kg * reps;
           }
-      const nut = Object.values(nutricion).filter((n) => {
-        const t = new Date(n.fecha + "T12:00:00").getTime();
-        return t >= desde.getTime() && t < hasta.getTime();
+      const nut = Object.values(nutrition).filter((n) => {
+        const t = new Date(n.date + "T12:00:00").getTime();
+        return t >= from.getTime() && t < to.getTime();
       });
       return {
-        entrenos: wk.length,
-        tonelaje: Math.round(ton),
-        limpios: nut.filter((n) => n.diaLimpio).length,
-        registrados: nut.length,
+        workouts: wk.length,
+        tonnage: Math.round(ton),
+        clean: nut.filter((n) => n.cleanDay).length,
+        logged: nut.length,
       };
     };
 
-    const finSemana = new Date(iniSemana);
-    finSemana.setDate(finSemana.getDate() + 7);
-    const actual = calc(iniSemana, finSemana);
-    const prev = calc(iniPrev, iniSemana);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 7);
+    const current = calc(weekStart, weekEnd);
+    const prev = calc(prevStart, weekStart);
 
-    // Tendencia de peso: último pesaje vs el más cercano a hace 7 días
-    const conPeso = bodyLogs.filter((b) => b.peso !== "");
-    const ultimo = conPeso[0];
-    let deltaPeso: number | null = null;
-    if (ultimo) {
-      const refT = new Date(ultimo.fecha).getTime() - 7 * 86400000;
-      const ref = [...conPeso]
-        .filter((b) => b.id !== ultimo.id)
-        .sort((a, b) => Math.abs(new Date(a.fecha).getTime() - refT) - Math.abs(new Date(b.fecha).getTime() - refT))[0];
-      if (ref) deltaPeso = +(Number(ultimo.peso) - Number(ref.peso)).toFixed(1);
+    // Weight trend: latest weigh-in vs the closest one to 7 days ago
+    const withWeight = bodyLogs.filter((b) => b.weight !== "");
+    const latest = withWeight[0];
+    let weightDelta: number | null = null;
+    if (latest) {
+      const refT = new Date(latest.date).getTime() - 7 * 86400000;
+      const ref = [...withWeight]
+        .filter((b) => b.id !== latest.id)
+        .sort((a, b) => Math.abs(new Date(a.date).getTime() - refT) - Math.abs(new Date(b.date).getTime() - refT))[0];
+      if (ref) weightDelta = +(Number(latest.weight) - Number(ref.weight)).toFixed(1);
     }
 
-    return { actual, prev, deltaPeso };
-  }, [mounted, workouts, bodyLogs, nutricion]);
+    return { current, prev, weightDelta };
+  }, [mounted, workouts, bodyLogs, nutrition]);
 
   if (!data) return null;
-  const { actual, prev, deltaPeso } = data;
-  const sinDatos = actual.entrenos === 0 && actual.registrados === 0 && deltaPeso == null;
-  if (sinDatos && prev.entrenos === 0 && prev.registrados === 0) return null;
+  const { current, prev, weightDelta } = data;
+  const noData = current.workouts === 0 && current.logged === 0 && weightDelta == null;
+  if (noData && prev.workouts === 0 && prev.logged === 0) return null;
 
   return (
     <section className="mt-4 card">
@@ -90,45 +90,45 @@ export default function WeeklySummary() {
 
       <div className="grid grid-cols-3 gap-2 text-center">
         <Item
-          valor={`${actual.entrenos}/4`}
+          value={`${current.workouts}/4`}
           label={t("Entrenos")}
-          delta={actual.entrenos - prev.entrenos}
-          unidad=""
+          delta={current.workouts - prev.workouts}
+          unit=""
         />
         <Item
-          valor={actual.tonelaje >= 1000 ? `${(actual.tonelaje / 1000).toFixed(1)}t` : `${actual.tonelaje}`}
+          value={current.tonnage >= 1000 ? `${(current.tonnage / 1000).toFixed(1)}t` : `${current.tonnage}`}
           label={t("Kg movidos")}
-          delta={actual.tonelaje - prev.tonelaje}
-          unidad=" kg"
+          delta={current.tonnage - prev.tonnage}
+          unit=" kg"
         />
         <Item
-          valor={actual.registrados ? `${actual.limpios}/${actual.registrados}` : "—"}
+          value={current.logged ? `${current.clean}/${current.logged}` : "—"}
           label={t("Días limpios")}
-          delta={actual.limpios - prev.limpios}
-          unidad=""
+          delta={current.clean - prev.clean}
+          unit=""
         />
       </div>
 
-      {deltaPeso != null && (
-        <p className={`mt-3 flex items-center justify-center gap-1.5 border-t border-line pt-2.5 text-xs ${deltaPeso < 0 ? "text-good" : "text-muted"}`}>
-          {deltaPeso < 0 ? <TrendingDown size={14} /> : deltaPeso > 0 ? <TrendingUp size={14} /> : <Minus size={14} />}
-          {t("Peso:")} {deltaPeso < 0 ? `−${Math.abs(deltaPeso)}` : deltaPeso > 0 ? `+${deltaPeso}` : t("igual")} kg {t("en ~7 días")}
+      {weightDelta != null && (
+        <p className={`mt-3 flex items-center justify-center gap-1.5 border-t border-line pt-2.5 text-xs ${weightDelta < 0 ? "text-good" : "text-muted"}`}>
+          {weightDelta < 0 ? <TrendingDown size={14} /> : weightDelta > 0 ? <TrendingUp size={14} /> : <Minus size={14} />}
+          {t("Peso:")} {weightDelta < 0 ? `−${Math.abs(weightDelta)}` : weightDelta > 0 ? `+${weightDelta}` : t("igual")} kg {t("en ~7 días")}
         </p>
       )}
     </section>
   );
 }
 
-function Item({ valor, label, delta, unidad }: { valor: string; label: string; delta: number; unidad: string }) {
+function Item({ value, label, delta, unit }: { value: string; label: string; delta: number; unit: string }) {
   return (
     <div className="rounded-xl bg-surface-2 py-2.5">
-      <div className="font-display text-xl tabular-nums">{valor}</div>
+      <div className="font-display text-xl tabular-nums">{value}</div>
       <div className="text-[10px] text-muted">{label}</div>
       {delta !== 0 && (
         <div className={`mt-0.5 text-[10px] tabular-nums ${delta > 0 ? "text-good" : "text-muted"}`}>
           {delta > 0 ? "+" : "−"}
           {Math.abs(delta) >= 1000 ? `${(Math.abs(delta) / 1000).toFixed(1)}t` : Math.abs(delta)}
-          {Math.abs(delta) < 1000 ? unidad : ""}
+          {Math.abs(delta) < 1000 ? unit : ""}
         </div>
       )}
     </div>

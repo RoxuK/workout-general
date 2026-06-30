@@ -3,14 +3,14 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { ImageIcon, X, Youtube } from "lucide-react";
-import { imagenesDe } from "@/lib/content";
+import { imagesFor } from "@/lib/content";
 
-export default function ExerciseImages({ nombre }: { nombre: string }) {
+export default function ExerciseImages({ name }: { name: string }) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  const imgs = imagenesDe(nombre);
-  const yt = `https://www.youtube.com/results?search_query=${encodeURIComponent(nombre + " técnica ejercicio")}`;
+  const imgs = imagesFor(name);
+  const yt = `https://www.youtube.com/results?search_query=${encodeURIComponent(name + " technique form")}`;
 
   return (
     <>
@@ -20,7 +20,7 @@ export default function ExerciseImages({ nombre }: { nombre: string }) {
           e.stopPropagation();
           setOpen(true);
         }}
-        aria-label="Ver imágenes del ejercicio"
+        aria-label="View exercise images"
         className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-line bg-surface-2 text-accent active:scale-95"
       >
         <ImageIcon size={17} />
@@ -36,7 +36,7 @@ export default function ExerciseImages({ nombre }: { nombre: string }) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-start justify-between gap-3">
-              <h3 className="font-display text-xl leading-tight">{nombre}</h3>
+              <h3 className="font-display text-xl leading-tight">{name}</h3>
               <button onClick={() => setOpen(false)} className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-line text-muted">
                 <X size={18} />
               </button>
@@ -47,22 +47,22 @@ export default function ExerciseImages({ nombre }: { nombre: string }) {
                 {imgs.map((src, i) => (
                   <figure key={i} className="overflow-hidden rounded-xl border border-line bg-white">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={src} alt={`${nombre} — posición ${i + 1}`} loading="eager" className="h-auto w-full object-contain" />
+                    <img src={src} alt={`${name} — position ${i + 1}`} loading="eager" className="h-auto w-full object-contain" />
                     <figcaption className="bg-surface-2 px-3 py-1.5 text-[11px] text-muted">
-                      {imgs.length === 2 ? (i === 0 ? "Posición inicial" : "Posición final") : `Imagen ${i + 1}`}
+                      {imgs.length === 2 ? (i === 0 ? "Starting position" : "End position") : `Image ${i + 1}`}
                     </figcaption>
                   </figure>
                 ))}
                 <a href={yt} target="_blank" rel="noreferrer" className="btn-ghost w-full gap-2 text-sm">
-                  <Youtube size={16} className="text-bad" /> Ver vídeo de la técnica
+                  <Youtube size={16} className="text-bad" /> Watch a form video
                 </a>
-                <p className="text-center text-[10px] text-muted">Imágenes: free-exercise-db (licencia abierta)</p>
+                <p className="text-center text-[10px] text-muted">Images: free-exercise-db (open license)</p>
               </div>
             ) : (
               <div className="py-4 text-center">
-                <p className="mb-4 text-sm text-muted">Sin imagen de referencia para este ejercicio.</p>
+                <p className="mb-4 text-sm text-muted">No reference image for this exercise.</p>
                 <a href={yt} target="_blank" rel="noreferrer" className="btn-accent w-full gap-2">
-                  <Youtube size={18} /> Ver vídeo de la técnica
+                  <Youtube size={18} /> Watch a form video
                 </a>
               </div>
             )}

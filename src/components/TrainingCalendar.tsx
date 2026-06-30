@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, CalendarDays, ChevronDown, CalendarClock, X, Check, Dumbbell } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { semanaDelPlan, faseActual, planEmpezado } from "@/lib/content";
+import { planWeek, currentPhase, planStarted } from "@/lib/content";
 import { useActivePlan } from "@/lib/user-content";
 import { dayKey } from "@/lib/utils";
 import { useT, useLang } from "@/lib/i18n";
@@ -21,8 +21,8 @@ const MESES_EN = [
 ];
 
 // "Upper A" -> "UA", "Lower B" -> "LB"
-function iniciales(nombre: string) {
-  return nombre.split(/\s+/).map((p) => p[0]?.toUpperCase()).join("").slice(0, 3);
+function initials(name: string) {
+  return name.split(/\s+/).map((p) => p[0]?.toUpperCase()).join("").slice(0, 3);
 }
 
 export default function TrainingCalendar() {
@@ -32,8 +32,8 @@ export default function TrainingCalendar() {
   const workouts = useStore((s) => s.workouts);
   const planStart = useStore((s) => s.planStart);
   const setPlanStart = useStore((s) => s.setPlanStart);
-  const agenda = useStore((s) => s.agenda);
-  const setAgenda = useStore((s) => s.setAgenda);
+  const schedule = useStore((s) => s.schedule);
+  const setSchedule = useStore((s) => s.setSchedule);
 
   const plan = useActivePlan();
   const t = useT();
@@ -41,35 +41,35 @@ export default function TrainingCalendar() {
   const meses = lang === "en" ? MESES_EN : MESES;
   const dow = lang === "en" ? DOW_EN : DOW;
   const [expanded, setExpanded] = useState(true);
-  const [editFecha, setEditFecha] = useState(false);
-  const [picker, setPicker] = useState<string | null>(null); // dayKey seleccionado
+  const [editStart, setEditStart] = useState(false);
+  const [picker, setPicker] = useState<string | null>(null); // selected dayKey
 
   const [cursor, setCursor] = useState(() => {
     const d = new Date();
     return { y: d.getFullYear(), m: d.getMonth() };
   });
 
-  // Días entrenados (registrados)
+  // Trained (logged) days
   const trained = useMemo(() => {
     const set = new Map<string, number>();
     if (mounted) {
       for (const w of workouts) {
-        const k = dayKey(new Date(w.fecha));
+        const k = dayKey(new Date(w.date));
         set.set(k, (set.get(k) ?? 0) + 1);
       }
     }
     return set;
   }, [workouts, mounted]);
 
-  const inicio = mounted ? (planStart || plan.fechaInicio) : plan.fechaInicio;
-  const inicioDate = new Date(inicio + (inicio.length === 10 ? "T00:00:00" : ""));
+  const start = mounted ? (planStart || plan.startDate) : plan.startDate;
+  const startDate = new Date(start + (start.length === 10 ? "T00:00:00" : ""));
 
-  const semana = mounted ? semanaDelPlan(plan, new Date(), planStart) : 1;
-  const fase = mounted ? faseActual(plan, new Date(), planStart) : plan.fases[0]?.nombre;
-  const empezado = mounted ? planEmpezado(plan, planStart) : true;
+  const week = mounted ? planWeek(plan, new Date(), planStart) : 1;
+  const phase = mounted ? currentPhase(plan, new Date(), planStart) : plan.phases[0]?.name;
+  const started = mounted ? planStarted(plan, planStart) : true;
 
   const first = new Date(cursor.y, cursor.m, 1);
-  const offset = (first.getDay() + 6) % 7; // lunes = 0
+  const offset = (first.getDay() + 6) % 7; // Monday = 0
   const daysInMonth = new Date(cursor.y, cursor.m + 1, 0).getDate();
   const todayKey = dayKey();
 
@@ -78,8 +78,8 @@ export default function TrainingCalendar() {
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ];
 
-  const programadosMes = mounted
-    ? Object.keys(agenda).filter((k) => {
+  const scheduledThisMonth = mounted
+    ? Object.keys(schedule).filter((k) => {
         const [y, m] = k.split("-").map(Number);
         return y === cursor.y && m === cursor.m + 1;
       }).length
@@ -92,12 +92,12 @@ export default function TrainingCalendar() {
     });
   }
 
-  const pickerSesion = picker ? agenda[picker] : undefined;
-  const sesionDe = (id?: string) => plan.sesiones.find((s) => s.id === id);
+  const pickerSession = picker ? schedule[picker] : undefined;
+  const sessionOf = (id?: string) => plan.sessions.find((s) => s.id === id);
 
   return (
     <section className="mt-4 card">
-      {/* Cabecera: estado del plan + desplegable */}
+      {/* Header: plan status + dropdown */}
       <button
         onClick={() => setExpanded((e) => !e)}
         className="flex w-full items-center justify-between"
@@ -106,11 +106,11 @@ export default function TrainingCalendar() {
           <CalendarDays size={16} className="text-accent" />
           <div>
             <div className="text-sm font-medium">
-              {empezado ? `${t("Semana")} ${semana} · ${t(fase ?? "")}` : t("Plan aún sin empezar")}
+              {started ? `${t("Semana")} ${week} · ${t(phase ?? "")}` : t("Plan aún sin empezar")}
             </div>
             <div className="text-[11px] text-muted">
               {mounted ? (
-                <>{t("Inicio:")} {inicioDate.toLocaleDateString(lang === "en" ? "en-GB" : "es-ES", { day: "numeric", month: "short", year: "numeric" })}</>
+                <>{t("Inicio:")} {startDate.toLocaleDateString(lang === "en" ? "en-GB" : "es-ES", { day: "numeric", month: "short", year: "numeric" })}</>
               ) : "…"}
             </div>
           </div>
@@ -118,12 +118,12 @@ export default function TrainingCalendar() {
         <ChevronDown size={18} className={`text-muted transition-transform ${expanded ? "rotate-180" : ""}`} />
       </button>
 
-      {/* Selector de fecha de inicio (adaptable) */}
+      {/* Start date picker (adjustable) */}
       {mounted && (
         <div className="mt-3">
-          {!editFecha ? (
+          {!editStart ? (
             <button
-              onClick={() => setEditFecha(true)}
+              onClick={() => setEditStart(true)}
               className="flex w-full items-center justify-between rounded-xl border border-line bg-surface-2 px-3 py-2 text-xs"
             >
               <span className="flex items-center gap-2 text-muted">
@@ -144,12 +144,12 @@ export default function TrainingCalendar() {
                 className="input text-sm"
               />
               <div className="mt-2 flex gap-2">
-                <button onClick={() => setEditFecha(false)} className="btn-accent flex-1 py-2 text-sm">{t("Listo")}</button>
+                <button onClick={() => setEditStart(false)} className="btn-accent flex-1 py-2 text-sm">{t("Listo")}</button>
                 {planStart && (
-                  <button onClick={() => { setPlanStart(null); setEditFecha(false); }} className="btn-ghost flex-1 py-2 text-sm">{t("Reiniciar")}</button>
+                  <button onClick={() => { setPlanStart(null); setEditStart(false); }} className="btn-ghost flex-1 py-2 text-sm">{t("Reiniciar")}</button>
                 )}
               </div>
-              <p className="mt-2 text-[10px] text-muted">{t("Las semanas, las fases y el recetario se ajustan a esta fecha.")}</p>
+              <p className="mt-2 text-[10px] text-muted">{t("Las semanas y las fases se ajustan a esta fecha.")}</p>
             </div>
           )}
         </div>
@@ -160,7 +160,7 @@ export default function TrainingCalendar() {
           <div className="mb-2 mt-4 flex items-center justify-between">
             <span className="text-sm font-medium">{meses[cursor.m]} {cursor.y}</span>
             <div className="flex items-center gap-1">
-              <span className="mr-1 text-xs text-muted">{programadosMes} {t("programados")}</span>
+              <span className="mr-1 text-xs text-muted">{scheduledThisMonth} {t("programados")}</span>
               <button onClick={() => shift(-1)} className="grid h-7 w-7 place-items-center rounded-lg border border-line text-muted">
                 <ChevronLeft size={15} />
               </button>
@@ -181,7 +181,7 @@ export default function TrainingCalendar() {
               const key = `${cursor.y}-${String(cursor.m + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
               const did = trained.has(key);
               const isToday = key === todayKey;
-              const ses = mounted ? sesionDe(agenda[key]) : undefined;
+              const ses = mounted ? sessionOf(schedule[key]) : undefined;
 
               return (
                 <button
@@ -199,7 +199,7 @@ export default function TrainingCalendar() {
                 >
                   <span className="leading-none">{day}</span>
                   {ses && !did && (
-                    <span className="mt-0.5 text-[8px] font-semibold leading-none">{iniciales(ses.nombre)}</span>
+                    <span className="mt-0.5 text-[8px] font-semibold leading-none">{initials(ses.name)}</span>
                   )}
                   {did && (
                     <Check size={9} className="absolute right-0.5 top-0.5" />
@@ -209,7 +209,7 @@ export default function TrainingCalendar() {
             })}
           </div>
 
-          {/* Leyenda */}
+          {/* Legend */}
           <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-muted">
             <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-accent" /> {t("Entrenado")}</span>
             <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm border border-accent bg-accent-soft" /> {t("Tú lo programas")}</span>
@@ -218,7 +218,7 @@ export default function TrainingCalendar() {
         </>
       )}
 
-      {/* Picker: elegir sesión para el día tocado */}
+      {/* Picker: choose a session for the tapped day */}
       {picker && (
         <div className="mt-3 rounded-xl border border-accent/40 bg-surface-2 p-3 animate-fade-up">
           <div className="mb-2 flex items-center justify-between">
@@ -235,35 +235,35 @@ export default function TrainingCalendar() {
           ) : (
             <>
               <div className="grid grid-cols-2 gap-2">
-                {plan.sesiones.map((s) => {
-                  const activo = pickerSesion === s.id;
+                {plan.sessions.map((s) => {
+                  const active = pickerSession === s.id;
                   return (
                     <button
                       key={s.id}
-                      onClick={() => setAgenda(picker, activo ? null : s.id)}
+                      onClick={() => setSchedule(picker, active ? null : s.id)}
                       className={`rounded-xl border px-3 py-2 text-left text-xs transition ${
-                        activo ? "border-accent bg-accent text-black" : "border-line text-ink hover:border-accent/50"
+                        active ? "border-accent bg-accent text-black" : "border-line text-ink hover:border-accent/50"
                       }`}
                     >
-                      <div className="font-semibold">{t(s.nombre)}</div>
-                      <div className={`text-[10px] ${activo ? "text-black/70" : "text-muted"}`}>{t(s.foco)}</div>
+                      <div className="font-semibold">{t(s.name)}</div>
+                      <div className={`text-[10px] ${active ? "text-black/70" : "text-muted"}`}>{t(s.focus)}</div>
                     </button>
                   );
                 })}
               </div>
 
               <div className="mt-2 flex gap-2">
-                {pickerSesion && (
+                {pickerSession && (
                   <button
-                    onClick={() => setAgenda(picker, null)}
+                    onClick={() => setSchedule(picker, null)}
                     className="btn-ghost flex-1 justify-center py-2 text-xs"
                   >
                     {t("Quitar / descanso")}
                   </button>
                 )}
-                {pickerSesion && (
+                {pickerSession && (
                   <Link
-                    href={`/entreno/${pickerSesion}`}
+                    href={`/entreno/${pickerSession}`}
                     className="btn-accent flex-1 justify-center gap-1 py-2 text-xs"
                   >
                     <Dumbbell size={13} /> {t("Entrenar")}

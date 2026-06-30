@@ -15,14 +15,14 @@ export default function Trophies() {
   const plan = useActivePlan();
   const workouts = useStore((s) => s.workouts);
   const bodyLogs = useStore((s) => s.bodyLogs);
-  const nutricion = useStore((s) => s.nutricion);
+  const nutrition = useStore((s) => s.nutrition);
   const planStart = useStore((s) => s.planStart);
   const t = useT();
 
-  const list = mounted ? computeAchievements({ workouts, bodyLogs, nutricion }, plan, planStart) : [];
+  const list = mounted ? computeAchievements({ workouts, bodyLogs, nutrition }, plan, planStart) : [];
   const unlocked = list.filter((a) => a.unlocked).length;
 
-  // Mostrar primero los conseguidos y luego el más cercano a desbloquear
+  // Show unlocked first, then the closest to unlocking
   const sorted = [...list].sort((a, b) => {
     if (a.unlocked !== b.unlocked) return a.unlocked ? -1 : 1;
     return b.progress - a.progress;
@@ -53,7 +53,7 @@ export default function Trophies() {
             <span className={`text-3xl ${a && !a.unlocked ? "opacity-40 grayscale" : ""}`}>
               {a?.emoji ?? "•"}
             </span>
-            <span className="text-[11px] leading-tight text-ink">{a ? t(a.titulo) : ""}</span>
+            <span className="text-[11px] leading-tight text-ink">{a ? t(a.title) : ""}</span>
             {a && !a.unlocked && (
               <span className="text-[10px] text-muted">
                 {a.current}/{a.target}

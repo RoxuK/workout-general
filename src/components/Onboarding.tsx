@@ -6,90 +6,102 @@ import { useStore } from "@/lib/store";
 import type { UserConfig } from "@/lib/types";
 
 // The prompt the user copies into claude.ai to generate their plan JSON
-const CLAUDE_PROMPT = `You are a personal trainer and nutritionist setting up a workout app for me.
+const CLAUDE_PROMPT = `You are a certified personal trainer and registered dietitian with 15+ years of experience designing individualized strength training and nutrition programs. You're running an intake consultation with a new client before writing their first program.
 
-Interview me by asking these questions ONE AT A TIME — wait for each answer before asking the next:
+Interview me by asking these questions ONE AT A TIME — wait for each answer before asking the next. Ask natural follow-up questions if an answer is vague or seems to conflict with something I said earlier.
 
-1. What is your main fitness goal? (lose fat / build muscle / body recomposition / general fitness)
-2. Your current weight (kg), height (cm), and age?
-3. What training equipment do you have access to? (full gym / home with dumbbells / bodyweight only)
-4. How many days per week can you train, and for how long per session?
-5. Any injuries, chronic pain, or physical limitations I should know about?
-6. Brief description of your current diet. Any foods you cannot or do not eat?
-7. Your target weight or physique goal, and any timeline?
+1. Sex (male / female / other) — this affects calorie and protein baseline estimates.
+2. Age.
+3. Current weight (kg) and height (cm).
+4. Main goal: lose fat, build muscle, body recomposition, general fitness, or athletic performance? In your own words, what does success look like in 3 months?
+5. Target weight or physique goal, and your ideal timeline.
+6. Training experience: complete beginner, some experience, or experienced lifter? What (if anything) are you currently doing for exercise?
+7. What equipment do you have access to: full gym, home gym with dumbbells, bodyweight only, or something else?
+8. How many days per week can you realistically train, and how many minutes per session?
+9. Any injuries, chronic pain, past surgeries, or physical limitations I should design around? Any movements you know you need to avoid?
+10. Any medical conditions or medications relevant to exercise or nutrition (e.g. diabetes, thyroid issues, pregnancy, heart conditions)?
+11. Describe a typical day of eating for you right now, as specifically as you can.
+12. Any food allergies, intolerances, or foods you refuse to eat?
+13. On average, how many hours do you sleep, and how would you rate your sleep quality?
+14. How stressful is your daily life or job right now (low / moderate / high), and how active is your day outside of training (desk job vs. on your feet)?
+15. Anything else you want me to know before I write your program?
 
-After I answer ALL seven questions, output ONLY a \`\`\`json code block in this exact schema — no other text outside the block:
+After I answer ALL fifteen questions:
+1. First, write a short assessment (3-5 sentences, plain text, not JSON) summarizing my profile, your estimate of my maintenance calories (state the formula you used, e.g. Mifflin-St Jeor, and the activity multiplier you applied), and the daily calorie target you're setting and why.
+2. Then output ONLY a \`\`\`json code block in the exact schema below — no other text outside the code block.
 
 \`\`\`json
 {
   "plan": {
     "id": "block-1",
-    "nombre": "Plan name",
-    "fechaInicio": "YYYY-MM-DD",
-    "fechaFin": "YYYY-MM-DD",
-    "pesoInicial": 80,
-    "pesoObjetivo": 75,
-    "frecuencia": "4 días/semana · 60 min/sesión",
-    "estructura": "Upper / Lower split",
-    "resumen": "Brief plan summary (2–3 sentences)",
-    "fases": [
-      { "nombre": "Foundation", "semanas": "1–4", "objetivo": "Phase goal", "rpe": "RPE 6–7" },
-      { "nombre": "Build", "semanas": "5–8", "objetivo": "Phase goal", "rpe": "RPE 7–8" }
+    "name": "Plan name",
+    "startDate": "YYYY-MM-DD",
+    "endDate": "YYYY-MM-DD",
+    "startingWeight": 80,
+    "targetWeight": 75,
+    "frequency": "4 days/week · 60 min/session",
+    "structure": "Upper / Lower split",
+    "summary": "Brief plan summary (2–3 sentences)",
+    "phases": [
+      { "name": "Foundation", "weeks": "1–4", "goal": "Phase goal", "rpe": "RPE 6–7" },
+      { "name": "Build", "weeks": "5–8", "goal": "Phase goal", "rpe": "RPE 7–8" }
     ],
-    "splitSemanal": [
-      { "dia": "Lunes", "sesion": "Upper A" },
-      { "dia": "Martes", "sesion": "Lower A" },
-      { "dia": "Miércoles", "sesion": "Descanso" },
-      { "dia": "Jueves", "sesion": "Upper B" },
-      { "dia": "Viernes", "sesion": "Lower B" },
-      { "dia": "Sábado", "sesion": "Cardio o descanso" },
-      { "dia": "Domingo", "sesion": "Descanso" }
+    "weeklySplit": [
+      { "day": "Monday", "session": "Upper A" },
+      { "day": "Tuesday", "session": "Lower A" },
+      { "day": "Wednesday", "session": "Rest" },
+      { "day": "Thursday", "session": "Upper B" },
+      { "day": "Friday", "session": "Lower B" },
+      { "day": "Saturday", "session": "Cardio or rest" },
+      { "day": "Sunday", "session": "Rest" }
     ],
-    "notaSplit": "Scheduling flexibility note",
-    "calentamiento": {
-      "duracion": "10 min",
-      "nota": "Always warm up before training",
-      "pasos": [
-        { "ejercicio": "Light cardio", "detalle": "5 min easy pace" },
-        { "ejercicio": "Dynamic stretching", "detalle": "Hip circles, shoulder rolls, leg swings" }
+    "splitNote": "Scheduling flexibility note",
+    "warmup": {
+      "duration": "10 min",
+      "note": "Always warm up before training",
+      "steps": [
+        { "exercise": "Light cardio", "detail": "5 min easy pace" },
+        { "exercise": "Dynamic stretching", "detail": "Hip circles, shoulder rolls, leg swings" }
       ]
     },
-    "sesiones": [
+    "sessions": [
       {
         "id": "upper-a",
-        "nombre": "Upper A",
-        "foco": "Push dominant (chest / shoulders / triceps)",
-        "cardioPost": "10 min optional",
-        "ejercicios": [
-          { "nombre": "Dumbbell Bench Press", "series": 3, "reps": "10", "descanso": "90s", "notas": "" },
-          { "nombre": "Dumbbell Row", "series": 3, "reps": "10/side", "descanso": "60s", "notas": "" },
-          { "nombre": "Overhead Press", "series": 3, "reps": "10", "descanso": "90s", "notas": "" },
-          { "nombre": "Lat Pulldown", "series": 3, "reps": "12", "descanso": "60s", "notas": "" },
-          { "nombre": "Bicep Curl", "series": 2, "reps": "12", "descanso": "45s", "notas": "" },
-          { "nombre": "Tricep Pushdown", "series": 2, "reps": "12", "descanso": "45s", "notas": "" }
+        "name": "Upper A",
+        "focus": "Push dominant (chest / shoulders / triceps)",
+        "postCardio": "10 min optional",
+        "exercises": [
+          { "name": "Dumbbell Bench Press", "sets": 3, "reps": "10", "rest": "90s", "notes": "" },
+          { "name": "Dumbbell Row", "sets": 3, "reps": "10/side", "rest": "60s", "notes": "" },
+          { "name": "Overhead Press", "sets": 3, "reps": "10", "rest": "90s", "notes": "" },
+          { "name": "Lat Pulldown", "sets": 3, "reps": "12", "rest": "60s", "notes": "" },
+          { "name": "Bicep Curl", "sets": 2, "reps": "12", "rest": "45s", "notes": "" },
+          { "name": "Tricep Pushdown", "sets": 2, "reps": "12", "rest": "45s", "notes": "" }
         ]
       }
     ],
-    "progresiones": [
-      { "fase": "Foundation", "puntos": ["Add 2.5 kg when you complete all reps cleanly for 2 sessions in a row"] }
+    "progressions": [
+      { "phase": "Foundation", "points": ["Add 2.5 kg when you complete all reps cleanly for 2 sessions in a row"] }
     ],
-    "reglaLumbar": "N/A"
+    "safetyNote": "Any injury-specific guidance from the intake, or \\"No specific restrictions noted.\\""
   },
   "nutrition": {
     "kcal": 2200,
-    "proteina": 160,
-    "carbos": 230,
-    "grasas": 70,
-    "nota": "Adjust based on weekly weight trend"
+    "protein": 160,
+    "carbs": 230,
+    "fats": 70,
+    "note": "Adjust based on weekly weight trend"
   }
 }
 \`\`\`
 
 Rules for the JSON:
-- "splitSemanal[].dia" MUST use Spanish day names: Lunes, Martes, Miércoles, Jueves, Viernes, Sábado, Domingo
-- Include 3–4 training sessions in "sesiones", each with 6–8 exercises
-- Set "fechaInicio" to today's date and "fechaFin" to 12 weeks from today
-- Adapt the split to the number of training days the user told you
+- "weeklySplit[].day" MUST use English day names: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
+- Include 3–5 training sessions in "sessions" depending on how many days I said I can train, each with 6–8 exercises
+- Set "startDate" to today's date and "endDate" to 12 weeks from today
+- Adapt every exercise to the equipment I actually have access to
+- If I mentioned injuries or limitations, reflect them in "safetyNote" and avoid or modify any exercise that would aggravate them
+- Set the exercise "sets"/"reps"/"rest" appropriately for my stated experience level
 
 Start the interview now.`;
 
@@ -99,13 +111,13 @@ function validateConfig(data: unknown): string | null {
   if (!d.plan || typeof d.plan !== "object") return 'Missing "plan" key';
   const p = d.plan as Record<string, unknown>;
   if (!p.id) return "Missing plan.id";
-  if (!p.nombre) return "Missing plan.nombre";
-  if (!Array.isArray(p.sesiones) || p.sesiones.length === 0) return "Missing plan.sesiones (must be a non-empty array)";
-  if (!Array.isArray(p.splitSemanal)) return "Missing plan.splitSemanal";
+  if (!p.name) return "Missing plan.name";
+  if (!Array.isArray(p.sessions) || p.sessions.length === 0) return "Missing plan.sessions (must be a non-empty array)";
+  if (!Array.isArray(p.weeklySplit)) return "Missing plan.weeklySplit";
   if (!d.nutrition || typeof d.nutrition !== "object") return 'Missing "nutrition" key';
   const n = d.nutrition as Record<string, unknown>;
   if (typeof n.kcal !== "number") return "nutrition.kcal must be a number";
-  if (typeof n.proteina !== "number") return "nutrition.proteina must be a number";
+  if (typeof n.protein !== "number") return "nutrition.protein must be a number";
   return null;
 }
 
@@ -213,7 +225,7 @@ export default function Onboarding() {
             >
               claude.ai
             </a>
-            . Claude will interview you and generate your personalised training and nutrition plan.
+            . Claude will run a full intake interview and generate your personalised training and nutrition plan.
           </p>
 
           <div className="relative">
