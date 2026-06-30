@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Trophy, ChevronRight } from "lucide-react";
-import { getPlanActivo } from "@/lib/content";
+import { useActivePlan } from "@/lib/user-content";
 import { useStore } from "@/lib/store";
 import { computeAchievements } from "@/lib/achievements";
 import { useT } from "@/lib/i18n";
@@ -12,7 +12,7 @@ export default function Trophies() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  const plan = getPlanActivo();
+  const plan = useActivePlan();
   const workouts = useStore((s) => s.workouts);
   const bodyLogs = useStore((s) => s.bodyLogs);
   const nutricion = useStore((s) => s.nutricion);

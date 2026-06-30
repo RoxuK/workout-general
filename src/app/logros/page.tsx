@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Header from "@/components/Header";
-import { getPlanActivo } from "@/lib/content";
+import { useActivePlan } from "@/lib/user-content";
 import { useStore } from "@/lib/store";
 import { computeAchievements, CATEGORIAS, type Achievement } from "@/lib/achievements";
 import { useT } from "@/lib/i18n";
@@ -11,7 +11,7 @@ export default function Logros() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  const plan = getPlanActivo();
+  const plan = useActivePlan();
   const workouts = useStore((s) => s.workouts);
   const bodyLogs = useStore((s) => s.bodyLogs);
   const nutricion = useStore((s) => s.nutricion);

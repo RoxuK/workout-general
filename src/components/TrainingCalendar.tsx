@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, CalendarDays, ChevronDown, CalendarClock, X, Check, Dumbbell } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { getPlanActivo, semanaDelPlan, faseActual, planEmpezado } from "@/lib/content";
+import { semanaDelPlan, faseActual, planEmpezado } from "@/lib/content";
+import { useActivePlan } from "@/lib/user-content";
 import { dayKey } from "@/lib/utils";
 import { useT, useLang } from "@/lib/i18n";
 
@@ -34,7 +35,7 @@ export default function TrainingCalendar() {
   const agenda = useStore((s) => s.agenda);
   const setAgenda = useStore((s) => s.setAgenda);
 
-  const plan = getPlanActivo();
+  const plan = useActivePlan();
   const t = useT();
   const lang = useLang();
   const meses = lang === "en" ? MESES_EN : MESES;

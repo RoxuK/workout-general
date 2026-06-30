@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Settings, FileText, ArrowRight, Activity, Flame, Scale, ShieldCheck } from "lucide-react";
-import { getPlanActivo, NUTRICION, pesoInicialEfectivo, ultimoPeso } from "@/lib/content";
+import { pesoInicialEfectivo, ultimoPeso } from "@/lib/content";
+import { useActivePlan, useNutritionTargets, useUserName } from "@/lib/user-content";
 import { useStore } from "@/lib/store";
 import { nombreDia, dayKey } from "@/lib/utils";
 import { useT, useLang } from "@/lib/i18n";
@@ -16,7 +17,9 @@ export default function Dashboard() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  const plan = getPlanActivo();
+  const plan = useActivePlan();
+  const nutrition = useNutritionTargets();
+  const userName = useUserName();
   const t = useT();
   const lang = useLang();
   const hoy = new Date();
@@ -65,7 +68,7 @@ export default function Dashboard() {
             {hoy.toLocaleDateString(lang === "en" ? "en-GB" : "es-ES", { weekday: "long", day: "numeric", month: "long" })}
           </div>
           <h1 className="mt-0.5 font-display text-3xl">
-            {t("Hola,")} <span className="text-accent-grad">Roxu</span>
+            {t("Hola,")} <span className="text-accent-grad">{mounted ? userName : ""}</span>
           </h1>
         </div>
         <div className="flex gap-2">
@@ -158,7 +161,7 @@ export default function Dashboard() {
       <section className="mt-6 grid grid-cols-2 gap-3">
         <Link href="/nutricion" className="card-2 text-center">
           <div className="font-display text-xl">{t("Nutrición")}</div>
-          <div className="mt-0.5 text-xs text-muted">{NUTRICION.kcal} {t("kcal objetivo")}</div>
+          <div className="mt-0.5 text-xs text-muted">{nutrition.kcal} {t("kcal objetivo")}</div>
         </Link>
         <Link href="/plan" className="card-2 text-center">
           <div className="font-display text-xl">{t("Plan")}</div>

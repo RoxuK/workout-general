@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, Dumbbell, CheckCircle2, Plane } from "lucide-react";
 import Header from "@/components/Header";
-import { getPlanActivo } from "@/lib/content";
+import { useActivePlan } from "@/lib/user-content";
 import { useStore } from "@/lib/store";
 import { nombreDia, fmtDate } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
@@ -13,7 +13,7 @@ export default function EntrenoList() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  const plan = getPlanActivo();
+  const plan = useActivePlan();
   const t = useT();
   const dia = nombreDia();
   const entradaHoy = plan.splitSemanal.find((s) => s.dia === dia);

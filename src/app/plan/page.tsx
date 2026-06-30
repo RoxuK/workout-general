@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { ChevronRight, AlertTriangle, Flame } from "lucide-react";
 import Header from "@/components/Header";
-import { getPlanActivo } from "@/lib/content";
+import { useActivePlan } from "@/lib/user-content";
 import { useT } from "@/lib/i18n";
 
 export default function PlanPage() {
-  const plan = getPlanActivo();
+  const plan = useActivePlan();
   const t = useT();
   return (
     <div className="animate-fade-up">
