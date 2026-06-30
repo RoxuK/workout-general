@@ -9,8 +9,9 @@ import {
 import Header from "@/components/Header";
 import {
   NUTRICION, SHOPPING, COMER_FUERA, RECETAS,
-  SUPLEMENTACION, faseActual, getPlanActivo,
+  SUPLEMENTACION, faseActual,
 } from "@/lib/content";
+import { useActivePlan, useNutritionTargets } from "@/lib/user-content";
 import { useStore } from "@/lib/store";
 import type { NutricionLog } from "@/lib/types";
 import { dayKey } from "@/lib/utils";
@@ -42,6 +43,7 @@ export default function Nutricion() {
   const stored = useStore((s) => s.nutricion[hoy]);
   const setNutricion = useStore((s) => s.setNutricion);
   const t = useT();
+  const nut = useNutritionTargets();
   const log = mounted ? stored ?? blank(hoy) : blank(hoy);
 
   function toggle(k: keyof NutricionLog) {
@@ -57,19 +59,22 @@ export default function Nutricion() {
         <div className="flex items-end justify-between">
           <div>
             <div className="label">{t("Calorías objetivo")}</div>
-            <div className="font-display text-4xl">{NUTRICION.kcal}</div>
+            <div className="font-display text-4xl">{nut.kcal}</div>
           </div>
           <div className="text-right text-xs text-muted">
-            <div>{t("Déficit")} {NUTRICION.deficit}</div>
-            <div>{NUTRICION.perdidaEsperada}</div>
+            {(NUTRICION as any).deficit && <div>{t("Déficit")} {(NUTRICION as any).deficit}</div>}
+            {(NUTRICION as any).perdidaEsperada && <div>{(NUTRICION as any).perdidaEsperada}</div>}
           </div>
         </div>
         <div className="mt-4 grid grid-cols-3 gap-3">
-          <Macro label={t("Proteína")} g={NUTRICION.proteina} color="var(--good)" />
-          <Macro label={t("Carbos")} g={NUTRICION.carbos} color="var(--accent)" />
-          <Macro label={t("Grasa")} g={NUTRICION.grasa} color="var(--warn)" />
+          <Macro label={t("Proteína")} g={nut.proteina} color="var(--good)" />
+          <Macro label={t("Carbos")} g={nut.carbos} color="var(--accent)" />
+          <Macro label={t("Grasa")} g={nut.grasas ?? (NUTRICION as any).grasa} color="var(--warn)" />
         </div>
-        <p className="mt-3 text-[11px] text-muted">{t(NUTRICION.notaProteina)}</p>
+        {nut.nota
+          ? <p className="mt-3 text-[11px] text-muted">{t(nut.nota)}</p>
+          : (NUTRICION as any).notaProteina && <p className="mt-3 text-[11px] text-muted">{t((NUTRICION as any).notaProteina)}</p>
+        }
       </div>
 
       {/* Tracker de macros del día */}
@@ -168,11 +173,12 @@ export default function Nutricion() {
   );
 }
 
-// ─── MacroTracker ────────────────────────────────────────────────────────────
+// ─── MacroTracker ─────────────────────────────────────────────────────────────────
 
 function MacroTracker() {
   const hoy = dayKey();
   const t = useT();
+  const nut = useNutritionTargets();
   const comidasRaw = useStore((s) => s.comidasDia[hoy]);
   const comidasHoy = comidasRaw ?? [];
   const toggleReceta = useStore((s) => s.toggleRecetaDia);
@@ -219,10 +225,10 @@ function MacroTracker() {
       </div>
 
       <div className="space-y-2.5">
-        <MacroBar label={t("Calorías")} val={totals.kcal} max={NUTRICION.kcal} unit="kcal" color="var(--accent)" />
-        <MacroBar label={t("Proteína")} val={totals.p} max={NUTRICION.proteina} unit="g" color="var(--good)" />
-        <MacroBar label={t("Carbos")} val={totals.c} max={NUTRICION.carbos} unit="g" color="var(--accent)" />
-        <MacroBar label={t("Grasa")} val={totals.g} max={NUTRICION.grasa} unit="g" color="var(--warn)" />
+        <MacroBar label={t("Calorías")} val={totals.kcal} max={nut.kcal} unit="kcal" color="var(--accent)" />
+        <MacroBar label={t("Proteína")} val={totals.p} max={nut.proteina} unit="g" color="var(--good)" />
+        <MacroBar label={t("Carbos")} val={totals.c} max={nut.carbos} unit="g" color="var(--accent)" />
+        <MacroBar label={t("Grasa")} val={totals.g} max={nut.grasas ?? (NUTRICION as any).grasa} unit="g" color="var(--warn)" />
       </div>
 
       {nRegistros === 0 ? (
@@ -303,10 +309,10 @@ function MacroBar({
   );
 }
 
-// ─── Recetario ───────────────────────────────────────────────────────────────
+// ─── Recetario ────────────────────────────────────────────────────────────────────────
 
 function Recetas() {
-  const plan = getPlanActivo();
+  const plan = useActivePlan();
   const t = useT();
   const planStart = useStore((s) => s.planStart);
   const momentos: string[] = RECETAS.momentos;
@@ -473,7 +479,7 @@ function RecetaCard({
   );
 }
 
-// ─── Suplementación ──────────────────────────────────────────────────────────
+// ─── Suplementación ───────────────────────────────────────────────────────────────────────
 
 function Suplementacion() {
   const S = SUPLEMENTACION;
@@ -559,7 +565,7 @@ function Suplementacion() {
   );
 }
 
-// ─── Helpers UI ──────────────────────────────────────────────────────────────
+// ─── Helpers UI ───────────────────────────────────────────────────────────────────────────────
 
 function Macro({ label, g, color }: { label: string; g: number; color: string }) {
   return (
