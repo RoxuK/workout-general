@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Copy, Download, Share2, Check, FileSpreadsheet } from "lucide-react";
 import Header from "@/components/Header";
 import { effectiveStartingWeight, latestWeight } from "@/lib/content";
-import { useActivePlan } from "@/lib/user-content";
+import { useActivePlan, useRecipes } from "@/lib/user-content";
 import { useT } from "@/lib/i18n";
 import { useStore } from "@/lib/store";
 import { bestSet, fmtDate } from "@/lib/utils";
@@ -18,10 +18,12 @@ export default function Reportes() {
   const t = useT();
 
   const plan = useActivePlan();
+  const recipes = useRecipes();
   const workouts = useStore((s) => s.workouts);
   const bodyLogs = useStore((s) => s.bodyLogs);
   const nutrition = useStore((s) => s.nutrition);
   const freeMeals = useStore((s) => s.freeMeals);
+  const recipesEaten = useStore((s) => s.recipesEaten);
   const planStart = useStore((s) => s.planStart);
 
   const md = useMemo(() => {
@@ -39,9 +41,9 @@ export default function Reportes() {
 
     const cleanDays = nut.filter((n) => n.cleanDay).length;
     const adherence = nut.length ? Math.round((cleanDays / nut.length) * 100) : 0;
-    const lowerBackVals = wk.filter((w) => w.lowerBack != null).map((w) => w.lowerBack as number);
-    const lowerBackAvg = lowerBackVals.length
-      ? (lowerBackVals.reduce((a, b) => a + b, 0) / lowerBackVals.length).toFixed(1)
+    const sorenessVals = wk.filter((w) => w.soreness != null).map((w) => w.soreness as number);
+    const sorenessAvg = sorenessVals.length
+      ? (sorenessVals.reduce((a, b) => a + b, 0) / sorenessVals.length).toFixed(1)
       : "—";
     const rpeVals = wk.filter((w) => w.rpe != null).map((w) => w.rpe as number);
     const rpeAvg = rpeVals.length
@@ -74,10 +76,10 @@ export default function Reportes() {
     }
     L.push(``);
     L.push(`## Workouts (${wk.length})`);
-    L.push(`- Average RPE: **${rpeAvg}** · Average lower back rating: **${lowerBackAvg}/5**`);
+    L.push(`- Average RPE: **${rpeAvg}** · Average soreness rating: **${sorenessAvg}/5**`);
     if (wk.length) {
       wk.forEach((w) => {
-        L.push(`- **${fmtDate(w.date)} · ${w.sessionName}** — RPE ${w.rpe ?? "—"}, lower back ${w.lowerBack ?? "—"}/5${w.notes ? ` — _${w.notes}_` : ""}`);
+        L.push(`- **${fmtDate(w.date)} · ${w.sessionName}** — RPE ${w.rpe ?? "—"}, soreness ${w.soreness ?? "—"}/5${w.notes ? ` — _${w.notes}_` : ""}`);
       });
     } else {
       L.push(`- No workouts logged in this period.`);
@@ -97,22 +99,28 @@ export default function Reportes() {
     L.push(`- Cravings: ${nut.filter((n) => n.craving).length}`);
     L.push(``);
 
-    // Food diary (free meals)
-    const diaryDays = Object.keys(freeMeals)
-      .filter((date) => new Date(date) >= since && (freeMeals[date]?.length ?? 0) > 0)
+    // Food diary (recipes + free meals)
+    const recipeById = new Map(recipes.map((r) => [r.id, r]));
+    const diaryDays = Array.from(new Set([...Object.keys(freeMeals), ...Object.keys(recipesEaten)]))
+      .filter((date) => new Date(date) >= since && ((freeMeals[date]?.length ?? 0) > 0 || (recipesEaten[date]?.length ?? 0) > 0))
       .sort((a, b) => (a > b ? -1 : 1));
 
     if (diaryDays.length > 0) {
       L.push(`## Food diary`);
       for (const date of diaryDays) {
         const meals = freeMeals[date] ?? [];
-        const totalKcal = meals.reduce((s, x) => s + x.kcal, 0);
-        const totals = meals.reduce(
-          (acc, x) => ({ p: acc.p + x.p, c: acc.c + x.c, g: acc.g + x.g }),
-          { p: 0, c: 0, g: 0 }
-        );
+        const eatenRecipes = (recipesEaten[date] ?? []).map((id) => recipeById.get(id)).filter((r): r is NonNullable<typeof r> => !!r);
+        const totalKcal = meals.reduce((s, x) => s + x.kcal, 0) + eatenRecipes.reduce((s, r) => s + r.kcal, 0);
+        const totals = [
+          ...meals.map((x) => ({ p: x.p, c: x.c, g: x.g })),
+          ...eatenRecipes.map((r) => ({ p: r.protein, c: r.carbs, g: r.fats })),
+        ].reduce((acc, x) => ({ p: acc.p + x.p, c: acc.c + x.c, g: acc.g + x.g }), { p: 0, c: 0, g: 0 });
         L.push(`### ${fmtDate(date)} · ${Math.round(totalKcal)} kcal · ${totals.p}P/${totals.c}C/${totals.g}G`);
-        L.push(`- ${meals.map((x) => `${x.name} (${x.kcal} kcal · ${x.p}P/${x.c}C/${x.g}G)`).join(", ")}`);
+        const items = [
+          ...eatenRecipes.map((r) => `${r.name} (${r.kcal} kcal · ${r.protein}P/${r.carbs}C/${r.fats}G)`),
+          ...meals.map((x) => `${x.name} (${x.kcal} kcal · ${x.p}P/${x.c}C/${x.g}G)`),
+        ];
+        L.push(`- ${items.join(", ")}`);
       }
       L.push(``);
     }
@@ -120,7 +128,7 @@ export default function Reportes() {
     L.push(`---`);
     L.push(`_Use this to adjust load, calories and the next phase._`);
     return L.join("\n");
-  }, [mounted, weeks, workouts, bodyLogs, nutrition, freeMeals, plan, planStart]);
+  }, [mounted, weeks, workouts, bodyLogs, nutrition, freeMeals, recipesEaten, recipes, plan, planStart]);
 
   async function copy() {
     await navigator.clipboard.writeText(md);
@@ -146,7 +154,7 @@ export default function Reportes() {
     }
   }
   async function excel() {
-    await exportExcel({ plan, planStart, workouts, bodyLogs, nutrition, freeMeals });
+    await exportExcel({ plan, planStart, workouts, bodyLogs, nutrition, freeMeals, recipes, recipesEaten });
   }
 
   return (
