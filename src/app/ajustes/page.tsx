@@ -186,7 +186,10 @@ export default function Ajustes() {
         </ol>
       </div>
 
-      <p className="mt-6 text-center text-[11px] text-muted">FitPlan — v0.1</p>
+      <Link href="/privacy" className="mt-6 block text-center text-xs text-muted underline">
+        Privacy Policy
+      </Link>
+      <p className="mt-2 text-center text-[11px] text-muted">FitPlan — v0.1</p>
     </div>
   );
 }
