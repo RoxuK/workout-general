@@ -19,14 +19,14 @@ import {
 } from "lucide-react";
 import { useActivePlan } from "@/lib/user-content";
 import { useStore } from "@/lib/store";
-import type { EjercicioLog, SetLog, WorkoutLog } from "@/lib/types";
+import type { ExerciseLog, SetLog, WorkoutLog } from "@/lib/types";
 import { uid, todayISO, bestSet, fmtDate } from "@/lib/utils";
 import ExerciseImages from "@/components/ExerciseImages";
 import PlateCalc from "@/components/PlateCalc";
 import { useT } from "@/lib/i18n";
 
-// Pantalla siempre encendida durante el entreno (Screen Wake Lock API).
-// Se re-adquiere al volver a la pestaña (el sistema lo suelta al ir a segundo plano).
+// Keeps the screen on during the workout (Screen Wake Lock API).
+// Re-acquired on returning to the tab (the system releases it in the background).
 function useWakeLock(active: boolean) {
   useEffect(() => {
     if (!active || !("wakeLock" in navigator)) return;
@@ -54,7 +54,7 @@ export default function Player() {
   const params = useParams<{ sesion: string }>();
   const plan = useActivePlan();
   const t = useT();
-  const sesion = plan.sesiones.find((s) => s.id === params.sesion);
+  const session = plan.sessions.find((s) => s.id === params.sesion);
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -62,39 +62,39 @@ export default function Player() {
   const lastWorkoutFor = useStore((s) => s.lastWorkoutFor);
   const addWorkout = useStore((s) => s.addWorkout);
   const workouts = useStore((s) => s.workouts);
-  const ultima = mounted && sesion ? lastWorkoutFor(sesion.id) : undefined;
+  const last = mounted && session ? lastWorkoutFor(session.id) : undefined;
 
-  // Calentamiento de la sesión (las de viaje traen el suyo, sin bici estática)
-  const calentamiento = sesion?.calentamiento ?? plan.calentamiento;
+  // Session warmup (travel sessions bring their own, no stationary bike)
+  const warmup = session?.warmup ?? plan.warmup;
 
   const [phase, setPhase] = useState<"warmup" | "work">("warmup");
   const [warm, setWarm] = useState<boolean[]>(() =>
-    calentamiento.pasos.map(() => false)
+    warmup.steps.map(() => false)
   );
-  const [logs, setLogs] = useState<EjercicioLog[]>([]);
+  const [logs, setLogs] = useState<ExerciseLog[]>([]);
   const [rpe, setRpe] = useState(7);
-  const [lumbar, setLumbar] = useState(4);
-  const [notas, setNotas] = useState("");
+  const [lowerBack, setLowerBack] = useState(4);
+  const [notes, setNotes] = useState("");
   const [saved, setSaved] = useState(false);
-  const [done, setDone] = useState<Resumen | null>(null);
+  const [done, setDone] = useState<Summary | null>(null);
   const [restReq, setRestReq] = useState<{ secs: number; n: number } | null>(null);
   const startRef = useRef<number | null>(null);
 
-  // Pantalla encendida mientras se entrena (no en calentamiento ni al acabar)
+  // Screen stays on while training (not during warmup or once finished)
   useWakeLock(phase === "work" && !done);
 
   useEffect(() => {
-    if (sesion) {
+    if (session) {
       setLogs(
-        sesion.ejercicios.map((e) => ({
-          nombre: e.nombre,
-          sets: Array.from({ length: e.series }, () => ({ kg: "", reps: "" } as SetLog)),
+        session.exercises.map((e) => ({
+          name: e.name,
+          sets: Array.from({ length: e.sets }, () => ({ kg: "", reps: "" } as SetLog)),
         }))
       );
     }
-  }, [sesion?.id]); // eslint-disable-line
+  }, [session?.id]); // eslint-disable-line
 
-  if (!sesion) {
+  if (!session) {
     return (
       <div className="pt-10 text-center">
         <p className="text-muted">{t("Sesión no encontrada.")}</p>
@@ -106,9 +106,9 @@ export default function Player() {
   const allWarm = warm.every(Boolean);
 
   function updateSet(ei: number, si: number, field: keyof SetLog, value: string) {
-    // Al apuntar las reps de una serie, arranca solo el descanso del ejercicio
+    // Starting the rest timer for the exercise the moment reps are logged
     if (field === "reps" && value !== "" && logs[ei]?.sets[si]?.reps === "") {
-      const d = parseInt(sesion!.ejercicios[ei]?.descanso ?? "", 10);
+      const d = parseInt(session!.exercises[ei]?.rest ?? "", 10);
       if (d > 0) setRestReq((r) => ({ secs: d, n: (r?.n ?? 0) + 1 }));
     }
     setLogs((prev) => {
@@ -119,86 +119,86 @@ export default function Player() {
     });
   }
 
-  function guardar() {
+  function save() {
     const w: WorkoutLog = {
       id: uid(),
-      fecha: todayISO(),
-      sesionId: sesion!.id,
-      sesionNombre: sesion!.nombre,
-      ejercicios: logs,
+      date: todayISO(),
+      sessionId: session!.id,
+      sessionName: session!.name,
+      exercises: logs,
       rpe,
-      lumbar,
-      notas,
+      lowerBack,
+      notes,
     };
 
-    // Resumen para la pantalla de cierre (antes de añadir el workout al store)
-    const volumen = volumenDe(logs);
-    const volumenPrev = ultima ? volumenDe(ultima.ejercicios) : null;
-    const prsNuevos: Resumen["prsNuevos"] = [];
+    // Summary for the closing screen (before adding the workout to the store)
+    const volume = volumeOf(logs);
+    const previousVolume = last ? volumeOf(last.exercises) : null;
+    const newPRs: Summary["newPRs"] = [];
     for (const e of logs) {
       const b = bestSet(e.sets);
       if (!b || b.kg <= 0) continue;
-      const pr = prMap.get(e.nombre);
+      const pr = prMap.get(e.name);
       if (!pr || b.kg > pr.kg || (b.kg === pr.kg && b.reps > pr.reps)) {
-        prsNuevos.push({ nombre: e.nombre, kg: b.kg, reps: b.reps });
+        newPRs.push({ name: e.name, kg: b.kg, reps: b.reps });
       }
     }
 
     addWorkout(w);
     setSaved(true);
     setDone({
-      duracionMin: startRef.current ? Math.round((Date.now() - startRef.current) / 60000) : null,
-      volumen,
-      volumenPrev,
-      prsNuevos,
+      durationMin: startRef.current ? Math.round((Date.now() - startRef.current) / 60000) : null,
+      volume,
+      previousVolume,
+      newPRs,
     });
   }
 
-  // referencia de la última vez por nombre de ejercicio
+  // Reference to the last time, by exercise name
   const lastByName = useMemo(() => {
     const m = new Map<string, ReturnType<typeof bestSet>>();
-    if (ultima) {
-      for (const e of ultima.ejercicios) m.set(e.nombre, bestSet(e.sets));
+    if (last) {
+      for (const e of last.exercises) m.set(e.name, bestSet(e.sets));
     }
     return m;
-  }, [ultima]);
+  }, [last]);
 
-  // PR histórico por ejercicio (mejor kg, desempate por reps) — para el badge 🏆
+  // All-time PR per exercise (best kg, ties broken by reps) — for the 🏆 badge
   const prMap = useMemo(() => {
     const m = new Map<string, { kg: number; reps: number }>();
     if (!mounted) return m;
     for (const w of workouts) {
-      for (const e of w.ejercicios) {
+      for (const e of w.exercises) {
         const b = bestSet(e.sets);
         if (!b || b.kg <= 0) continue;
-        const cur = m.get(e.nombre);
+        const cur = m.get(e.name);
         if (!cur || b.kg > cur.kg || (b.kg === cur.kg && b.reps > cur.reps)) {
-          m.set(e.nombre, b);
+          m.set(e.name, b);
         }
       }
     }
     return m;
   }, [workouts, mounted]);
 
-  // Sobrecarga progresiva: si la última vez completó todas las series con las
-  // reps objetivo, sugerir +2,5 kg
-  const sugerencias = useMemo(() => {
+  // Progressive overload: if last time all sets hit the target reps,
+  // suggest +2.5 kg
+  const suggestions = useMemo(() => {
     const m = new Map<string, number>();
-    if (!ultima || !sesion) return m;
-    for (const ej of sesion.ejercicios) {
-      const log = ultima.ejercicios.find((e) => e.nombre === ej.nombre);
+    if (!last || !session) return m;
+    for (const ej of session.exercises) {
+      const log = last.exercises.find((e) => e.name === ej.name);
       if (!log) continue;
       const target = parseInt(ej.reps, 10) || 0;
       const sets = log.sets.filter((s) => typeof s.kg === "number" && s.kg > 0);
-      if (sets.length < ej.series || target <= 0) continue;
+      if (sets.length < ej.sets || target <= 0) continue;
       const all = sets.every((s) => typeof s.reps === "number" && s.reps >= target);
       if (all) {
         const maxKg = Math.max(...sets.map((s) => Number(s.kg)));
-        m.set(ej.nombre, Math.round((maxKg + 2.5) * 2) / 2);
+        m.set(ej.name, Math.round((maxKg + 2.5) * 2) / 2);
       }
     }
     return m;
-  }, [ultima, sesion]);
+  }, [last, session]);
 
   return (
     <div className="animate-fade-up pb-6">
@@ -206,21 +206,21 @@ export default function Player() {
         <Link href="/entreno" className="inline-flex items-center gap-1 text-xs text-muted">
           <ChevronLeft size={16} /> {t("Sesiones")}
         </Link>
-        {ultima && (
-          <span className="chip">{t("Última:")} {fmtDate(ultima.fecha)}</span>
+        {last && (
+          <span className="chip">{t("Última:")} {fmtDate(last.date)}</span>
         )}
       </header>
 
-      <h1 className="mt-2 font-display text-3xl">{t(sesion.nombre)}</h1>
-      <p className="text-sm text-muted">{t(sesion.foco)}</p>
+      <h1 className="mt-2 font-display text-3xl">{t(session.name)}</h1>
+      <p className="text-sm text-muted">{t(session.focus)}</p>
 
       {phase === "warmup" ? (
         <Warmup
-          pasos={calentamiento.pasos}
+          steps={warmup.steps}
           warm={warm}
           setWarm={setWarm}
-          nota={calentamiento.nota}
-          duracion={calentamiento.duracion}
+          note={warmup.note}
+          duration={warmup.duration}
           allWarm={allWarm}
           onStart={() => {
             startRef.current = Date.now();
@@ -232,30 +232,30 @@ export default function Player() {
           <RestTimer auto={restReq} />
 
           <div className="mt-4 space-y-4">
-            {sesion.ejercicios.map((ej, ei) => {
-              const prev = lastByName.get(ej.nombre);
-              const pr = prMap.get(ej.nombre);
-              const sug = sugerencias.get(ej.nombre);
+            {session.exercises.map((ej, ei) => {
+              const prev = lastByName.get(ej.name);
+              const pr = prMap.get(ej.name);
+              const sug = suggestions.get(ej.name);
               return (
                 <div key={ei} className="card">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="font-medium leading-snug">{t(ej.nombre)}</div>
+                      <div className="font-medium leading-snug">{t(ej.name)}</div>
                       <div className="mt-0.5 text-xs text-muted">
-                        {ej.series} × {t(ej.reps)} · {t("descanso")} {ej.descanso}
+                        {ej.sets} × {t(ej.reps)} · {t("descanso")} {ej.rest}
                       </div>
                       <div className="mt-1.5 flex flex-wrap gap-1">
                         {pr && pr.kg > 0 && (
                           <span className="chip border-accent/50 text-accent">🏆 {pr.kg} kg × {pr.reps}</span>
                         )}
-                        {ej.lumbar && <span className="chip border-warn/50 text-warn">{t("lumbar")}</span>}
+                        {ej.lowerBack && <span className="chip border-warn/50 text-warn">{t("lumbar")}</span>}
                         {ej.core && <span className="chip">{t("core")}</span>}
                       </div>
                     </div>
-                    <ExerciseImages nombre={ej.nombre} />
+                    <ExerciseImages name={ej.name} />
                   </div>
 
-                  {ej.notas && <p className="mt-2 text-xs text-muted">{t(ej.notas)}</p>}
+                  {ej.notes && <p className="mt-2 text-xs text-muted">{t(ej.notes)}</p>}
 
                   {prev && prev.kg > 0 ? (
                     <p className="mt-2 text-xs text-accent">
@@ -291,13 +291,13 @@ export default function Player() {
             })}
           </div>
 
-          {sesion.cardioPost && (
+          {session.postCardio && (
             <p className="mt-4 rounded-xl bg-accent-soft p-3 text-xs text-muted">
-              {t("Cardio post:")} {t(sesion.cardioPost)}
+              {t("Cardio post:")} {t(session.postCardio)}
             </p>
           )}
 
-          {/* RPE + lumbar */}
+          {/* RPE + lower back */}
           <div className="mt-5 card space-y-5">
             <Slider
               label={t("RPE de la sesión")}
@@ -312,16 +312,16 @@ export default function Player() {
               hint={t("1 mal · 5 perfecta")}
               min={1}
               max={5}
-              value={lumbar}
-              onChange={setLumbar}
-              tone={lumbar <= 2 ? "bad" : "good"}
+              value={lowerBack}
+              onChange={setLowerBack}
+              tone={lowerBack <= 2 ? "bad" : "good"}
             />
-            {lumbar <= 2 && (
+            {lowerBack <= 2 && (
               <div className="rounded-xl border border-bad/40 bg-bad/10 p-3 text-xs text-muted">
                 <div className="mb-1 flex items-center gap-1 font-medium text-bad">
                   <AlertTriangle size={14} /> {t("Atención lumbar")}
                 </div>
-                {t(plan.reglaLumbar)}
+                {t(plan.safetyNote)}
               </div>
             )}
             <div>
@@ -329,13 +329,13 @@ export default function Player() {
               <textarea
                 className="input min-h-20 resize-none"
                 placeholder={t("Energía, dolores, técnica, lo que sea…")}
-                value={notas}
-                onChange={(e) => setNotas(e.target.value)}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
               />
             </div>
           </div>
 
-          <button onClick={guardar} disabled={saved} className="btn-accent mt-5 w-full">
+          <button onClick={save} disabled={saved} className="btn-accent mt-5 w-full">
             {saved ? (
               <>
                 <Check size={18} /> {t("¡Guardado!")}
@@ -347,23 +347,23 @@ export default function Player() {
         </>
       )}
 
-      {done && <DoneOverlay resumen={done} sesionNombre={sesion.nombre} />}
+      {done && <DoneOverlay summary={done} sessionName={session.name} />}
     </div>
   );
 }
 
-// ─── Cierre de sesión ────────────────────────────────────────────────────────────────
+// ─── Session close ───────────────────────────────────────────────────────────
 
-type Resumen = {
-  duracionMin: number | null;
-  volumen: number;
-  volumenPrev: number | null;
-  prsNuevos: { nombre: string; kg: number; reps: number }[];
+type Summary = {
+  durationMin: number | null;
+  volume: number;
+  previousVolume: number | null;
+  newPRs: { name: string; kg: number; reps: number }[];
 };
 
-function volumenDe(ejercicios: EjercicioLog[]) {
+function volumeOf(exercises: ExerciseLog[]) {
   let v = 0;
-  for (const e of ejercicios) {
+  for (const e of exercises) {
     for (const s of e.sets) {
       const kg = typeof s.kg === "number" ? s.kg : 0;
       const reps = typeof s.reps === "number" ? s.reps : 0;
@@ -373,13 +373,13 @@ function volumenDe(ejercicios: EjercicioLog[]) {
   return v;
 }
 
-function DoneOverlay({ resumen, sesionNombre }: { resumen: Resumen; sesionNombre: string }) {
+function DoneOverlay({ summary, sessionName }: { summary: Summary; sessionName: string }) {
   const t = useT();
-  const diff = resumen.volumenPrev != null ? resumen.volumen - resumen.volumenPrev : null;
+  const diff = summary.previousVolume != null ? summary.volume - summary.previousVolume : null;
 
-  // El wrapper de la página tiene un transform residual (animate-fade-up con
-  // fill "both"), que convierte a ese div en el contenedor de los `fixed`.
-  // El portal saca el overlay a <body> para que ocupe el viewport real.
+  // The page wrapper has a residual transform (animate-fade-up with fill
+  // "both"), which makes that div the containing block for `fixed`.
+  // The portal moves the overlay to <body> so it covers the real viewport.
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -396,18 +396,18 @@ function DoneOverlay({ resumen, sesionNombre }: { resumen: Resumen; sesionNombre
           <Check size={32} />
         </div>
         <h2 className="mt-4 font-display text-3xl">{t("¡Sesión completada!")}</h2>
-        <p className="mt-1 text-sm text-muted">{t(sesionNombre)}</p>
+        <p className="mt-1 text-sm text-muted">{t(sessionName)}</p>
 
         <div className="mt-6 grid grid-cols-2 gap-3">
           <div className="card-2 py-4">
             <div className="font-display text-2xl tabular-nums">
-              {resumen.duracionMin != null ? `${resumen.duracionMin}′` : "—"}
+              {summary.durationMin != null ? `${summary.durationMin}′` : "—"}
             </div>
             <div className="mt-0.5 text-[10px] text-muted">{t("Duración")}</div>
           </div>
           <div className="card-2 py-4">
             <div className="font-display text-2xl tabular-nums">
-              {Math.round(resumen.volumen).toLocaleString("es-ES")}
+              {Math.round(summary.volume).toLocaleString("en-GB")}
             </div>
             <div className="mt-0.5 text-[10px] text-muted">{t("kg movidos")}</div>
           </div>
@@ -417,20 +417,20 @@ function DoneOverlay({ resumen, sesionNombre }: { resumen: Resumen; sesionNombre
           <p className={`mt-3 flex items-center justify-center gap-1 text-sm ${diff > 0 ? "text-good" : "text-muted"}`}>
             <TrendingUp size={15} />
             {diff > 0
-              ? `+${Math.round(diff).toLocaleString("es-ES")} ${t("kg más que la última vez")}`
-              : `${Math.round(diff).toLocaleString("es-ES")} ${t("kg vs la última vez")}`}
+              ? `+${Math.round(diff).toLocaleString("en-GB")} ${t("kg más que la última vez")}`
+              : `${Math.round(diff).toLocaleString("en-GB")} ${t("kg vs la última vez")}`}
           </p>
         )}
 
-        {resumen.prsNuevos.length > 0 && (
+        {summary.newPRs.length > 0 && (
           <div className="mt-5 card border-accent/40 text-left">
             <div className="mb-2 flex items-center gap-2 font-medium text-accent">
-              <Trophy size={16} /> {resumen.prsNuevos.length === 1 ? t("¡Nuevo récord!") : `${resumen.prsNuevos.length} ${t("récords nuevos")}`}
+              <Trophy size={16} /> {summary.newPRs.length === 1 ? t("¡Nuevo récord!") : `${summary.newPRs.length} ${t("récords nuevos")}`}
             </div>
             <div className="space-y-1.5">
-              {resumen.prsNuevos.map((p) => (
-                <div key={p.nombre} className="flex items-center justify-between text-sm">
-                  <span className="pr-2">{t(p.nombre)}</span>
+              {summary.newPRs.map((p) => (
+                <div key={p.name} className="flex items-center justify-between text-sm">
+                  <span className="pr-2">{t(p.name)}</span>
                   <span className="shrink-0 font-display text-accent tabular-nums">
                     {p.kg} kg × {p.reps}
                   </span>
@@ -452,8 +452,8 @@ function DoneOverlay({ resumen, sesionNombre }: { resumen: Resumen; sesionNombre
   );
 }
 
-// Confetti en canvas: ráfagas con física (gravedad, rozamiento, giro 3D
-// simulado) que explotan desde la zona del check. Se limpia solo al acabar.
+// Canvas confetti: bursts with physics (gravity, drag, simulated 3D spin)
+// exploding from the check mark area. Cleans itself up when done.
 function ConfettiBurst() {
   const ref = useRef<HTMLCanvasElement>(null);
 
@@ -490,7 +490,7 @@ function ConfettiBurst() {
         pieces.push({
           x, y,
           vx: Math.cos(ang) * v,
-          vy: Math.sin(ang) * v - speed * 0.55, // sesgo hacia arriba
+          vy: Math.sin(ang) * v - speed * 0.55, // upward bias
           w: 5 + Math.random() * 5,
           h: 8 + Math.random() * 6,
           rot: Math.random() * Math.PI,
@@ -503,7 +503,7 @@ function ConfettiBurst() {
       }
     }
 
-    // Ráfaga principal desde el check + dos laterales escalonadas
+    // Main burst from the checkmark plus two staggered side bursts
     burst(W / 2, H * 0.3, 70, 9);
     const t1 = setTimeout(() => burst(W * 0.18, H * 0.4, 32, 7.5), 200);
     const t2 = setTimeout(() => burst(W * 0.82, H * 0.4, 32, 7.5), 360);
@@ -516,8 +516,8 @@ function ConfettiBurst() {
         if (p.life >= p.ttl) continue;
         alive = true;
         p.life++;
-        p.vy += 0.16;   // gravedad
-        p.vx *= 0.985;  // rozamiento
+        p.vy += 0.16;   // gravity
+        p.vx *= 0.985;  // drag
         p.vy *= 0.99;
         p.x += p.vx;
         p.y += p.vy;
@@ -527,7 +527,7 @@ function ConfettiBurst() {
         ctx.save();
         ctx.translate(p.x, p.y);
         ctx.rotate(p.rot);
-        // "Volteo 3D": el ancho oscila como una tarjeta girando en el aire
+        // "3D flip": the width oscillates like a card spinning in the air
         ctx.scale(Math.sin(p.life * 0.15 + p.rot) * 0.6 + 0.7, 1);
         if (p.circle) {
           ctx.beginPath();
@@ -551,24 +551,24 @@ function ConfettiBurst() {
     };
   }, []);
 
-  // h-full/w-full: inset-0 no estira elementos reemplazados como <canvas>
+  // h-full/w-full: inset-0 doesn't stretch replaced elements like <canvas>
   return <canvas ref={ref} className="pointer-events-none fixed inset-0 z-[60] h-full w-full" />;
 }
 
 function Warmup({
-  pasos,
+  steps,
   warm,
   setWarm,
-  nota,
-  duracion,
+  note,
+  duration,
   allWarm,
   onStart,
 }: {
-  pasos: { ejercicio: string; detalle: string }[];
+  steps: { exercise: string; detail: string }[];
   warm: boolean[];
   setWarm: (f: (p: boolean[]) => boolean[]) => void;
-  nota: string;
-  duracion: string;
+  note: string;
+  duration: string;
   allWarm: boolean;
   onStart: () => void;
 }) {
@@ -576,10 +576,10 @@ function Warmup({
   return (
     <div className="mt-5 animate-fade-up">
       <div className="mb-3 flex items-center gap-2 text-sm text-accent">
-        <Flame size={16} /> {t("Calentamiento")} {duracion} · {t("obligatorio con tu lumbar")}
+        <Flame size={16} /> {t("Calentamiento")} {duration} · {t("obligatorio con tu lumbar")}
       </div>
       <div className="space-y-2">
-        {pasos.map((p, i) => (
+        {steps.map((p, i) => (
           <button
             key={i}
             onClick={() => setWarm((prev) => prev.map((b, j) => (j === i ? !b : b)))}
@@ -595,13 +595,13 @@ function Warmup({
               {warm[i] && <Check size={13} />}
             </span>
             <span>
-              <span className="text-sm text-ink">{t(p.ejercicio)}</span>
-              <span className="block text-xs text-muted">{t(p.detalle)}</span>
+              <span className="text-sm text-ink">{t(p.exercise)}</span>
+              <span className="block text-xs text-muted">{t(p.detail)}</span>
             </span>
           </button>
         ))}
       </div>
-      <p className="mt-3 rounded-xl bg-accent-soft p-3 text-xs text-muted">{t(nota)}</p>
+      <p className="mt-3 rounded-xl bg-accent-soft p-3 text-xs text-muted">{t(note)}</p>
       <button onClick={onStart} disabled={!allWarm} className="btn-accent mt-4 w-full">
         {allWarm ? t("Empezar la sesión") : t("Marca el calentamiento para empezar")}
       </button>
@@ -637,7 +637,7 @@ function RestTimer({ auto }: { auto: { secs: number; n: number } | null }) {
   const [running, setRunning] = useState(false);
   const ref = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Auto-arranque al registrar las reps de una serie
+  // Auto-start when logging the reps of a set
   useEffect(() => {
     if (auto && auto.secs > 0) {
       setSecs(auto.secs);

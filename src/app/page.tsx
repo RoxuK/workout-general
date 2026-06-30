@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Settings, FileText, ArrowRight, Activity, Flame, Scale, ShieldCheck } from "lucide-react";
-import { pesoInicialEfectivo, ultimoPeso } from "@/lib/content";
+import { effectiveStartingWeight, latestWeight } from "@/lib/content";
 import { useActivePlan, useNutritionTargets, useUserName } from "@/lib/user-content";
 import { useStore } from "@/lib/store";
-import { nombreDia, dayKey } from "@/lib/utils";
+import { dayName, dayKey } from "@/lib/utils";
 import { useT, useLang } from "@/lib/i18n";
 import Ring from "@/components/Ring";
 import TrainingCalendar from "@/components/TrainingCalendar";
@@ -22,50 +22,50 @@ export default function Dashboard() {
   const userName = useUserName();
   const t = useT();
   const lang = useLang();
-  const hoy = new Date();
-  const dia = nombreDia(hoy);
-  const hoyKey = dayKey(hoy);
+  const today = new Date();
+  const day = dayName(today);
+  const todayKey = dayKey(today);
 
   const workouts = useStore((s) => s.workouts);
   const bodyLogs = useStore((s) => s.bodyLogs);
-  const nutricion = useStore((s) => s.nutricion);
-  const agendaHoy = useStore((s) => s.agenda[hoyKey]);
+  const nutritionLogs = useStore((s) => s.nutrition);
+  const scheduledToday = useStore((s) => s.schedule[todayKey]);
   const planStart = useStore((s) => s.planStart);
 
-  // La sesión de hoy la decide Roxu (agenda). Si no ha elegido nada,
-  // se sugiere la del split semanal como ayuda.
-  const entradaHoy = plan.splitSemanal.find((s) => s.dia === dia);
-  const sesionAgenda = mounted ? plan.sesiones.find((s) => s.id === agendaHoy) : undefined;
-  const sesionSugerida = plan.sesiones.find((s) => entradaHoy?.sesion.startsWith(s.nombre));
-  const sesionHoy = sesionAgenda ?? sesionSugerida;
-  const esElegida = !!sesionAgenda;
+  // Today's session is the user's call (schedule). If nothing's chosen yet,
+  // suggest the one from the weekly split as a hint.
+  const todayEntry = plan.weeklySplit.find((s) => s.day === day);
+  const scheduledSession = mounted ? plan.sessions.find((s) => s.id === scheduledToday) : undefined;
+  const suggestedSession = plan.sessions.find((s) => todayEntry?.session.startsWith(s.name));
+  const sessionToday = scheduledSession ?? suggestedSession;
+  const isChosen = !!scheduledSession;
 
-  // El punto de partida lo marca el primer pesaje real (báscula o manual),
-  // no el número fijo del plan.
-  const pesoBase = mounted ? pesoInicialEfectivo(plan, bodyLogs, planStart) : plan.pesoInicial;
-  const pesoActual = mounted ? ultimoPeso(bodyLogs) ?? pesoBase : plan.pesoInicial;
-  const totalAPerder = pesoBase - plan.pesoObjetivo;
-  const perdido = pesoBase - pesoActual;
-  const progreso = totalAPerder > 0 ? perdido / totalAPerder : 0;
+  // The real starting point is the first actual weigh-in (manual), not the
+  // plan's fixed number.
+  const baseWeight = mounted ? effectiveStartingWeight(plan, bodyLogs, planStart) : plan.startingWeight;
+  const currentWeight = mounted ? latestWeight(bodyLogs) ?? baseWeight : plan.startingWeight;
+  const totalToLose = baseWeight - plan.targetWeight;
+  const lost = baseWeight - currentWeight;
+  const progress = totalToLose > 0 ? lost / totalToLose : 0;
 
-  const inicioSemana = startOfWeek(hoy);
-  const entrenosSemana = mounted
-    ? workouts.filter((w) => new Date(w.fecha) >= inicioSemana).length
+  const weekStart = startOfWeek(today);
+  const workoutsThisWeek = mounted
+    ? workouts.filter((w) => new Date(w.date) >= weekStart).length
     : 0;
-  const diasLimpiosSemana = mounted
-    ? Object.values(nutricion).filter(
-        (n) => n.diaLimpio && new Date(n.fecha) >= inicioSemana
+  const cleanDaysThisWeek = mounted
+    ? Object.values(nutritionLogs).filter(
+        (n) => n.cleanDay && new Date(n.date) >= weekStart
       ).length
     : 0;
-  const ultLumbar = mounted ? workouts.find((w) => w.lumbar != null)?.lumbar ?? null : null;
+  const lastLowerBack = mounted ? workouts.find((w) => w.lowerBack != null)?.lowerBack ?? null : null;
 
   return (
     <div className="animate-fade-up">
       <header className="flex items-center justify-between pt-3">
         <div>
-          {/* suppress: la fecha se prerenderiza en el build y cambia al hidratar */}
+          {/* suppress: the date is pre-rendered at build time and changes on hydrate */}
           <div className="label" suppressHydrationWarning>
-            {hoy.toLocaleDateString(lang === "en" ? "en-GB" : "es-ES", { weekday: "long", day: "numeric", month: "long" })}
+            {today.toLocaleDateString(lang === "en" ? "en-GB" : "es-ES", { weekday: "long", day: "numeric", month: "long" })}
           </div>
           <h1 className="mt-0.5 font-display text-3xl">
             {t("Hola,")} <span className="text-accent-grad">{mounted ? userName : ""}</span>
@@ -81,32 +81,32 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* Sesión de hoy */}
+      {/* Today's session */}
       <section className="mt-6">
-        {sesionHoy ? (
+        {sessionToday ? (
           <Link
-            href={`/entreno/${sesionHoy.id}`}
+            href={`/entreno/${sessionToday.id}`}
             className="block overflow-hidden rounded-2xl border border-line bg-gradient-to-br from-surface-2 to-surface p-5"
           >
-            <div className="label">{esElegida ? t("Tu sesión de hoy") : t("Sugerencia de hoy")}</div>
+            <div className="label">{isChosen ? t("Tu sesión de hoy") : t("Sugerencia de hoy")}</div>
             <div className="mt-1 flex items-end justify-between">
               <div>
-                <div className="font-display text-3xl">{t(sesionHoy.nombre)}</div>
-                <div className="mt-1 text-sm text-muted">{t(sesionHoy.foco)}</div>
+                <div className="font-display text-3xl">{t(sessionToday.name)}</div>
+                <div className="mt-1 text-sm text-muted">{t(sessionToday.focus)}</div>
               </div>
               <div className="grid h-12 w-12 place-items-center rounded-full bg-accent text-black">
                 <ArrowRight size={22} />
               </div>
             </div>
             <div className="mt-4 flex gap-2 text-xs text-muted">
-              <span className="chip">{sesionHoy.ejercicios.length} {t("ejercicios")}</span>
+              <span className="chip">{sessionToday.exercises.length} {t("ejercicios")}</span>
               <span className="chip">{t("+ calentamiento 10 min")}</span>
             </div>
           </Link>
         ) : (
           <div className="card">
             <div className="label">{t("Hoy toca")}</div>
-            <div className="mt-1 font-display text-2xl">{entradaHoy?.sesion ? t(entradaHoy.sesion) : t("Descanso")}</div>
+            <div className="mt-1 font-display text-2xl">{todayEntry?.session ? t(todayEntry.session) : t("Descanso")}</div>
             <p className="mt-1 text-sm text-muted">
               {t("Día de recuperación. Si quieres, elige una sesión y entrena igual.")}
             </p>
@@ -115,20 +115,20 @@ export default function Dashboard() {
         )}
       </section>
 
-      {/* Progreso de peso */}
+      {/* Weight progress */}
       <section className="mt-4 card flex items-center gap-4">
         <Ring
-          value={progreso}
-          label={`${pesoActual.toFixed(1)}`}
-          sub={`kg · ${t("meta")} ${plan.pesoObjetivo}`}
+          value={progress}
+          label={`${currentWeight.toFixed(1)}`}
+          sub={`kg · ${t("meta")} ${plan.targetWeight}`}
         />
         <div className="flex-1">
           <div className="label">{t("Recomposición")}</div>
           <div className="mt-1 font-display text-2xl">
-            {perdido > 0 ? `−${perdido.toFixed(1)} kg` : t("Arrancando")}
+            {lost > 0 ? `−${lost.toFixed(1)} kg` : t("Arrancando")}
           </div>
           <p className="mt-1 text-xs text-muted" suppressHydrationWarning>
-            {Math.round(progreso * 100)}% {t("del objetivo")} ({pesoBase} → {plan.pesoObjetivo} kg)
+            {Math.round(progress * 100)}% {t("del objetivo")} ({baseWeight} → {plan.targetWeight} kg)
           </p>
           <Link href="/progreso" className="mt-3 inline-flex items-center gap-1 text-xs text-accent">
             <Scale size={14} /> {t("Registrar pesaje")}
@@ -136,28 +136,28 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* Métricas rápidas */}
+      {/* Quick stats */}
       <section className="mt-4 grid grid-cols-3 gap-3">
-        <Stat icon={<Flame size={16} />} value={`${entrenosSemana}/4`} label={t("Entrenos sem.")} />
-        <Stat icon={<ShieldCheck size={16} />} value={`${diasLimpiosSemana}`} label={t("Días limpios")} />
+        <Stat icon={<Flame size={16} />} value={`${workoutsThisWeek}/4`} label={t("Entrenos sem.")} />
+        <Stat icon={<ShieldCheck size={16} />} value={`${cleanDaysThisWeek}`} label={t("Días limpios")} />
         <Stat
           icon={<Activity size={16} />}
-          value={ultLumbar ? `${ultLumbar}/5` : "—"}
+          value={lastLowerBack ? `${lastLowerBack}/5` : "—"}
           label={t("Lumbar")}
-          tone={ultLumbar != null && ultLumbar <= 2 ? "bad" : "default"}
+          tone={lastLowerBack != null && lastLowerBack <= 2 ? "bad" : "default"}
         />
       </section>
 
-      {/* Resumen de la semana vs la anterior */}
+      {/* This week vs last week */}
       <WeeklySummary />
 
-      {/* Calendario de entrenos */}
+      {/* Training calendar */}
       <TrainingCalendar />
 
-      {/* Logros / gamificación */}
+      {/* Achievements / gamification */}
       <Trophies />
 
-      {/* Accesos */}
+      {/* Quick links */}
       <section className="mt-6 grid grid-cols-2 gap-3">
         <Link href="/nutricion" className="card-2 text-center">
           <div className="font-display text-xl">{t("Nutrición")}</div>
@@ -165,12 +165,12 @@ export default function Dashboard() {
         </Link>
         <Link href="/plan" className="card-2 text-center">
           <div className="font-display text-xl">{t("Plan")}</div>
-          <div className="mt-0.5 text-xs text-muted">{plan.fases.length} {t("fases · 12 sem")}</div>
+          <div className="mt-0.5 text-xs text-muted">{plan.phases.length} {t("fases · 12 sem")}</div>
         </Link>
       </section>
 
       <p className="mt-6 text-center text-[11px] text-muted">
-        {t(plan.nombre)}
+        {t(plan.name)}
       </p>
     </div>
   );
@@ -198,7 +198,7 @@ function Stat({
 
 function startOfWeek(d: Date) {
   const x = new Date(d);
-  const day = (x.getDay() + 6) % 7; // lunes = 0
+  const day = (x.getDay() + 6) % 7; // Monday = 0
   x.setHours(0, 0, 0, 0);
   x.setDate(x.getDate() - day);
   return x;
