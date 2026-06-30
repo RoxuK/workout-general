@@ -80,8 +80,8 @@ export async function scheduleReminders(reminders: Reminder[]) {
 export async function testNotification() {
   if (!notifSupported() || Notification.permission !== "granted") return false;
   const reg = await navigator.serviceWorker.ready;
-  await reg.showNotification("Roxu · Entreno", {
-    body: "¡Las notificaciones funcionan! 💪",
+  await reg.showNotification("FitPlan", {
+    body: "Notifications are working! 💪",
     icon: "/icon-192.png",
     badge: "/icon-192.png",
   });

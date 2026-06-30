@@ -7,11 +7,11 @@ export const THEME_KEY = "roxu-theme";
 
 export type ThemeId = "oro" | "bosque" | "electrico" | "claro";
 
-export const THEMES: { id: ThemeId; nombre: string; desc: string; swatch: [string, string] }[] = [
-  { id: "oro", nombre: "Oro nocturno", desc: "El clásico de la app", swatch: ["#0d0d0e", "#d8a84e"] },
-  { id: "bosque", nombre: "Bosque", desc: "Verde calmado y oscuro", swatch: ["#0b110d", "#93cd7e"] },
-  { id: "electrico", nombre: "Eléctrico", desc: "Azul noche con cian", swatch: ["#0a0c12", "#6fd3f2"] },
-  { id: "claro", nombre: "Claro minimal", desc: "Para entrenar a plena luz", swatch: ["#f6f3ee", "#c89540"] },
+export const THEMES: { id: ThemeId; name: string; desc: string; swatch: [string, string] }[] = [
+  { id: "oro", name: "Oro nocturno", desc: "El clásico de la app", swatch: ["#0d0d0e", "#d8a84e"] },
+  { id: "bosque", name: "Bosque", desc: "Verde calmado y oscuro", swatch: ["#0b110d", "#93cd7e"] },
+  { id: "electrico", name: "Eléctrico", desc: "Azul noche con cian", swatch: ["#0a0c12", "#6fd3f2"] },
+  { id: "claro", name: "Claro minimal", desc: "Para entrenar a plena luz", swatch: ["#f6f3ee", "#c89540"] },
 ];
 
 const THEME_BG: Record<ThemeId, string> = {

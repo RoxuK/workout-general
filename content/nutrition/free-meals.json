@@ -1,0 +1,49 @@
+{
+  "title": "Free meal",
+  "subtitle": "For anything off-plan: eating out, cravings, or unweighed plates. Coach estimates — a rough log beats no log at all.",
+  "note": "Sizes adjust the macros: small ×0.7 · large ×1.35. When in doubt between two sizes, pick the larger one — better to overestimate in a deficit.",
+  "items": [
+    { "id": "doner", "name": "Doner kebab (with bread)", "emoji": "🥙", "kcal": 700, "p": 32, "c": 68, "g": 32 },
+    { "id": "wrap", "name": "Chicken/beef wrap", "emoji": "🌯", "kcal": 750, "p": 34, "c": 74, "g": 34 },
+    { "id": "falafel-wrap", "name": "Falafel wrap", "emoji": "🧆", "kcal": 700, "p": 20, "c": 82, "g": 32 },
+    { "id": "kebab-box", "name": "Kebab box with fries", "emoji": "🍟", "kcal": 820, "p": 30, "c": 80, "g": 42 },
+    { "id": "pizza-slice", "name": "Slice of pizza", "emoji": "🍕", "kcal": 290, "p": 12, "c": 33, "g": 12 },
+    { "id": "pizza-whole", "name": "Whole pizza (margherita)", "emoji": "🍕", "kcal": 1100, "p": 45, "c": 130, "g": 42 },
+    { "id": "burger-fries", "name": "Burger with fries", "emoji": "🍔", "kcal": 1000, "p": 38, "c": 92, "g": 52 },
+    { "id": "burger", "name": "Burger alone", "emoji": "🍔", "kcal": 560, "p": 30, "c": 42, "g": 30 },
+    { "id": "hotdog-fries", "name": "Hot dog with fries", "emoji": "🌭", "kcal": 800, "p": 22, "c": 66, "g": 50 },
+    { "id": "ramen", "name": "Ramen (full bowl)", "emoji": "🍜", "kcal": 650, "p": 32, "c": 78, "g": 22 },
+    { "id": "sushi-12", "name": "Sushi (12 pieces)", "emoji": "🍣", "kcal": 560, "p": 24, "c": 90, "g": 10 },
+    { "id": "pad-thai", "name": "Pad thai / noodle stir-fry", "emoji": "🥡", "kcal": 760, "p": 28, "c": 92, "g": 30 },
+    { "id": "chicken-salad", "name": "Large chicken salad", "emoji": "🥗", "kcal": 450, "p": 35, "c": 22, "g": 24 },
+    { "id": "bowl", "name": "Bowl (rice, protein, veg)", "emoji": "🥣", "kcal": 620, "p": 35, "c": 70, "g": 20 },
+    { "id": "brunch", "name": "Brunch (eggs, bread, avocado)", "emoji": "🍳", "kcal": 680, "p": 26, "c": 52, "g": 40 },
+    { "id": "croissant", "name": "Croissant", "emoji": "🥐", "kcal": 280, "p": 5, "c": 30, "g": 15 },
+    { "id": "cake", "name": "Slice of cake", "emoji": "🍰", "kcal": 420, "p": 6, "c": 50, "g": 22 },
+    { "id": "pretzel", "name": "Pretzel", "emoji": "🥨", "kcal": 330, "p": 9, "c": 66, "g": 4 },
+    { "id": "icecream", "name": "Ice cream (2 scoops)", "emoji": "🍨", "kcal": 250, "p": 4, "c": 28, "g": 13 },
+    { "id": "chocolate", "name": "Chocolate (4 squares)", "emoji": "🍫", "kcal": 220, "p": 3, "c": 22, "g": 13 },
+    { "id": "beer", "name": "Beer 0.5 L", "emoji": "🍺", "kcal": 215, "p": 2, "c": 18, "g": 0 },
+    { "id": "wine", "name": "Glass of wine", "emoji": "🍷", "kcal": 125, "p": 0, "c": 4, "g": 0 },
+    { "id": "spritz", "name": "Spritz / cocktail", "emoji": "🍹", "kcal": 180, "p": 0, "c": 16, "g": 0 }
+  ],
+  "sizes": [
+    { "id": "S", "label": "Small", "factor": 0.7 },
+    { "id": "M", "label": "Normal", "factor": 1 },
+    { "id": "L", "label": "Large", "factor": 1.35 }
+  ],
+  "handPortions": {
+    "title": "By eye, with your hand",
+    "intro": "If the dish isn't listed above, estimate it by hand — the method coaches use when there's no scale around.",
+    "portions": [
+      { "id": "palm", "label": "Palms of protein", "detail": "chicken, fish, tofu, meat — one palm (thickness included)", "emoji": "✋", "kcal": 145, "p": 25, "c": 0, "g": 5 },
+      { "id": "fist", "label": "Fists of carbs", "detail": "rice, pasta, bread, potato — one closed fist", "emoji": "✊", "kcal": 150, "p": 3, "c": 33, "g": 1 },
+      { "id": "thumb", "label": "Thumbs of fat", "detail": "oil, cheese, nuts, sauces — one whole thumb", "emoji": "👍", "kcal": 100, "p": 0, "c": 0, "g": 11 }
+    ]
+  },
+  "genericOptions": [
+    { "id": "gen-light", "name": "Eating out · light", "emoji": "🍽️", "kcal": 500, "p": 25, "c": 50, "g": 20, "detail": "salad with protein, soup + small plate" },
+    { "id": "gen-normal", "name": "Eating out · normal", "emoji": "🍽️", "kcal": 800, "p": 35, "c": 80, "g": 35, "detail": "standard restaurant main course" },
+    { "id": "gen-heavy", "name": "Eating out · heavy", "emoji": "🍽️", "kcal": 1100, "p": 45, "c": 105, "g": 50, "detail": "main + starter or dessert, a big meal" }
+  ]
+}

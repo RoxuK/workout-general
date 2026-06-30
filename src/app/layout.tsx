@@ -21,10 +21,10 @@ const sans = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Roxu · Entreno",
-  description: "Plan de entrenamiento y nutrición personalizado de Roxu",
+  title: "FitPlan",
+  description: "Your personalized training and nutrition plan",
   manifest: "/manifest.webmanifest",
-  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Roxu" },
+  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "FitPlan" },
 };
 
 export const viewport: Viewport = {
@@ -37,7 +37,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${display.variable} ${sans.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${display.variable} ${sans.variable}`} suppressHydrationWarning>
       <body className="min-h-dvh bg-bg text-ink">
         {/* Aplica el theme guardado antes de pintar, para evitar flash */}
         <script

@@ -1,11 +1,11 @@
 "use client";
 
-// Fotos de progreso en IndexedDB (no caben en localStorage y nunca salen
-// del dispositivo). DB separada del estado de la app.
+// Progress photos in IndexedDB (too large for localStorage, and they never
+// leave the device). Separate DB from the rest of the app state.
 
 export type ProgressPhoto = {
   id: string;
-  fecha: string; // ISO
+  date: string; // ISO
   blob: Blob;
 };
 
@@ -44,15 +44,15 @@ export function addPhoto(photo: ProgressPhoto): Promise<unknown> {
 
 export async function listPhotos(): Promise<ProgressPhoto[]> {
   const all = await tx<ProgressPhoto[]>("readonly", (s) => s.getAll());
-  return all.sort((a, b) => (a.fecha < b.fecha ? 1 : -1));
+  return all.sort((a, b) => (a.date < b.date ? 1 : -1));
 }
 
 export function deletePhoto(id: string): Promise<unknown> {
   return tx("readwrite", (s) => s.delete(id));
 }
 
-// Reduce la imagen a máx 1080px de lado y JPEG 0.85 antes de guardar,
-// para que la galería no se coma el almacenamiento del teléfono.
+// Shrinks the image to max 1080px on its longest side and JPEG 0.85 before
+// saving, so the gallery doesn't eat up the phone's storage.
 export function resizeImage(file: File, maxSide = 1080): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
@@ -76,7 +76,7 @@ export function resizeImage(file: File, maxSide = 1080): Promise<Blob> {
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error("imagen no válida"));
+      reject(new Error("invalid image"));
     };
     img.src = url;
   });
