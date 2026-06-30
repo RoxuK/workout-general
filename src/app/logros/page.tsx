@@ -14,15 +14,15 @@ export default function Logros() {
   const plan = useActivePlan();
   const workouts = useStore((s) => s.workouts);
   const bodyLogs = useStore((s) => s.bodyLogs);
-  const nutricion = useStore((s) => s.nutricion);
+  const nutrition = useStore((s) => s.nutrition);
   const planStart = useStore((s) => s.planStart);
   const t = useT();
 
-  const list = mounted ? computeAchievements({ workouts, bodyLogs, nutricion }, plan, planStart) : [];
+  const list = mounted ? computeAchievements({ workouts, bodyLogs, nutrition }, plan, planStart) : [];
   const unlocked = list.filter((a) => a.unlocked).length;
   const pct = list.length ? Math.round((unlocked / list.length) * 100) : 0;
 
-  const ordenar = (arr: Achievement[]) =>
+  const sortGroup = (arr: Achievement[]) =>
     [...arr].sort((a, b) => {
       if (a.unlocked !== b.unlocked) return a.unlocked ? -1 : 1;
       return b.progress - a.progress;
@@ -32,7 +32,7 @@ export default function Logros() {
     <div className="animate-fade-up">
       <Header eyebrow="Tu motivación" title="Logros" back="/" />
 
-      {/* Resumen global */}
+      {/* Overall summary */}
       <div className="card mb-5">
         <div className="flex items-center justify-between">
           <div>
@@ -50,19 +50,19 @@ export default function Logros() {
       </div>
 
       {CATEGORIAS.map((cat) => {
-        const grupo = ordenar(list.filter((a) => a.categoria === cat));
-        if (!grupo.length) return null;
-        const got = grupo.filter((a) => a.unlocked).length;
+        const group = sortGroup(list.filter((a) => a.category === cat));
+        if (!group.length) return null;
+        const got = group.filter((a) => a.unlocked).length;
         return (
           <section key={cat} className="mb-6">
             <div className="mb-2 flex items-center justify-between">
               <h2 className="section-title text-lg">{t(cat)}</h2>
               <span className="text-xs text-muted">
-                {got}/{grupo.length}
+                {got}/{group.length}
               </span>
             </div>
             <div className="space-y-3">
-              {grupo.map((a) => (
+              {group.map((a) => (
                 <div
                   key={a.id}
                   className={`card flex items-center gap-4 ${a.unlocked ? "border-accent/50" : ""}`}
@@ -70,7 +70,7 @@ export default function Logros() {
                   <span className={`text-4xl ${a.unlocked ? "" : "opacity-40 grayscale"}`}>{a.emoji}</span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium">{t(a.titulo)}</span>
+                      <span className="font-medium">{t(a.title)}</span>
                       {a.unlocked && <span className="chip border-accent/60 text-accent">{t("Conseguido")}</span>}
                     </div>
                     <p className="text-xs text-muted">{t(a.desc)}</p>

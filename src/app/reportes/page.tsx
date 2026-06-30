@@ -3,17 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Copy, Download, Share2, Check, FileSpreadsheet } from "lucide-react";
 import Header from "@/components/Header";
-import { RECETAS, SUPLEMENTACION, pesoInicialEfectivo, ultimoPeso } from "@/lib/content";
+import { effectiveStartingWeight, latestWeight } from "@/lib/content";
 import { useActivePlan } from "@/lib/user-content";
 import { useT } from "@/lib/i18n";
 import { useStore } from "@/lib/store";
 import { bestSet, fmtDate } from "@/lib/utils";
 import { exportExcel } from "@/lib/export-excel";
-
-function parseMacrosRep(s: string) {
-  const m = s.match(/(\d+)P[^0-9]*(\d+)C[^0-9]*(\d+)G/);
-  return m ? { p: +m[1], c: +m[2], g: +m[3] } : { p: 0, c: 0, g: 0 };
-}
 
 export default function Reportes() {
   const [mounted, setMounted] = useState(false);
@@ -25,145 +20,107 @@ export default function Reportes() {
   const plan = useActivePlan();
   const workouts = useStore((s) => s.workouts);
   const bodyLogs = useStore((s) => s.bodyLogs);
-  const nutricion = useStore((s) => s.nutricion);
-  const comidasDia = useStore((s) => s.comidasDia);
-  const comidasLibres = useStore((s) => s.comidasLibres);
-  const suplementosDia = useStore((s) => s.suplementosDia);
+  const nutrition = useStore((s) => s.nutrition);
+  const freeMeals = useStore((s) => s.freeMeals);
   const planStart = useStore((s) => s.planStart);
 
   const md = useMemo(() => {
     if (!mounted) return "";
-    const desde = new Date();
-    desde.setDate(desde.getDate() - weeks * 7);
-    const allRecipes: any[] = RECETAS.recetas as any[];
+    const since = new Date();
+    since.setDate(since.getDate() - weeks * 7);
 
-    const wk = workouts.filter((w) => new Date(w.fecha) >= desde);
-    const bl = bodyLogs.filter((b) => new Date(b.fecha) >= desde);
-    const nut = Object.values(nutricion).filter((n) => new Date(n.fecha) >= desde);
+    const wk = workouts.filter((w) => new Date(w.date) >= since);
+    const bl = bodyLogs.filter((b) => new Date(b.date) >= since);
+    const nut = Object.values(nutrition).filter((n) => new Date(n.date) >= since);
 
-    const pesoBase = pesoInicialEfectivo(plan, bodyLogs, planStart);
-    const pesoUltimo = ultimoPeso(bodyLogs);
-    const perdidoTotal = pesoUltimo != null ? pesoBase - pesoUltimo : 0;
+    const baseWeight = effectiveStartingWeight(plan, bodyLogs, planStart);
+    const lastWeight = latestWeight(bodyLogs);
+    const totalLost = lastWeight != null ? baseWeight - lastWeight : 0;
 
-    const diasLimpios = nut.filter((n) => n.diaLimpio).length;
-    const adherencia = nut.length ? Math.round((diasLimpios / nut.length) * 100) : 0;
-    const lumbarVals = wk.filter((w) => w.lumbar != null).map((w) => w.lumbar as number);
-    const lumbarMedia = lumbarVals.length
-      ? (lumbarVals.reduce((a, b) => a + b, 0) / lumbarVals.length).toFixed(1)
+    const cleanDays = nut.filter((n) => n.cleanDay).length;
+    const adherence = nut.length ? Math.round((cleanDays / nut.length) * 100) : 0;
+    const lowerBackVals = wk.filter((w) => w.lowerBack != null).map((w) => w.lowerBack as number);
+    const lowerBackAvg = lowerBackVals.length
+      ? (lowerBackVals.reduce((a, b) => a + b, 0) / lowerBackVals.length).toFixed(1)
       : "—";
     const rpeVals = wk.filter((w) => w.rpe != null).map((w) => w.rpe as number);
-    const rpeMedia = rpeVals.length
+    const rpeAvg = rpeVals.length
       ? (rpeVals.reduce((a, b) => a + b, 0) / rpeVals.length).toFixed(1)
       : "—";
 
-    // Mejores sets por ejercicio en el periodo
+    // Best sets per exercise in the period
     const prMap = new Map<string, { kg: number; reps: number }>();
     for (const w of wk) {
-      for (const e of w.ejercicios) {
+      for (const e of w.exercises) {
         const b = bestSet(e.sets);
         if (!b) continue;
-        const cur = prMap.get(e.nombre);
-        if (!cur || b.kg > cur.kg) prMap.set(e.nombre, b);
+        const cur = prMap.get(e.name);
+        if (!cur || b.kg > cur.kg) prMap.set(e.name, b);
       }
     }
 
     const L: string[] = [];
-    L.push(`# Reporte de seguimiento — Roxu`);
-    L.push(`**Periodo:** últimas ${weeks} semanas · generado ${fmtDate(new Date().toISOString())}`);
-    L.push(`**Plan:** ${plan.nombre}`);
+    L.push(`# Training report`);
+    L.push(`**Period:** last ${weeks} weeks · generated ${fmtDate(new Date().toISOString())}`);
+    L.push(`**Plan:** ${plan.name}`);
     L.push(``);
-    L.push(`## Peso y composición`);
-    L.push(`- Peso inicial del bloque: **${pesoBase} kg** · objetivo **${plan.pesoObjetivo} kg**`);
-    L.push(`- Último peso: **${pesoUltimo != null ? pesoUltimo + " kg" : "sin registrar"}**`);
-    L.push(`- Pérdida acumulada: **${perdidoTotal > 0 ? "−" + perdidoTotal.toFixed(1) + " kg" : "—"}**`);
+    L.push(`## Weight and composition`);
+    L.push(`- Starting weight: **${baseWeight} kg** · target **${plan.targetWeight} kg**`);
+    L.push(`- Latest weight: **${lastWeight != null ? lastWeight + " kg" : "not logged"}**`);
+    L.push(`- Total lost: **${totalLost > 0 ? "−" + totalLost.toFixed(1) + " kg" : "—"}**`);
     if (bl.length) {
-      L.push(`- Pesajes en el periodo:`);
-      bl.forEach((b) => L.push(`  - ${fmtDate(b.fecha)}: ${b.peso !== "" ? b.peso + " kg" : "—"}${b.cintura !== "" ? `, cintura ${b.cintura} cm` : ""}${b.grasa !== "" ? `, grasa ${b.grasa}%` : ""}`));
+      L.push(`- Weigh-ins in this period:`);
+      bl.forEach((b) => L.push(`  - ${fmtDate(b.date)}: ${b.weight !== "" ? b.weight + " kg" : "—"}${b.waist !== "" ? `, waist ${b.waist} cm` : ""}${b.bodyFat !== "" ? `, body fat ${b.bodyFat}%` : ""}`));
     }
     L.push(``);
-    L.push(`## Entrenos (${wk.length})`);
-    L.push(`- RPE medio: **${rpeMedia}** · Sensación lumbar media: **${lumbarMedia}/5**`);
+    L.push(`## Workouts (${wk.length})`);
+    L.push(`- Average RPE: **${rpeAvg}** · Average lower back rating: **${lowerBackAvg}/5**`);
     if (wk.length) {
       wk.forEach((w) => {
-        L.push(`- **${fmtDate(w.fecha)} · ${w.sesionNombre}** — RPE ${w.rpe ?? "—"}, lumbar ${w.lumbar ?? "—"}/5${w.notas ? ` — _${w.notas}_` : ""}`);
+        L.push(`- **${fmtDate(w.date)} · ${w.sessionName}** — RPE ${w.rpe ?? "—"}, lower back ${w.lowerBack ?? "—"}/5${w.notes ? ` — _${w.notes}_` : ""}`);
       });
     } else {
-      L.push(`- Sin entrenos registrados en el periodo.`);
+      L.push(`- No workouts logged in this period.`);
     }
     L.push(``);
     if (prMap.size) {
-      L.push(`## Mejores series del periodo`);
+      L.push(`## Best sets this period`);
       Array.from(prMap.entries())
         .sort((a, b) => b[1].kg - a[1].kg)
         .forEach(([n, b]) => L.push(`- ${n}: **${b.kg} kg × ${b.reps}**`));
       L.push(``);
     }
-    L.push(`## Nutrición`);
-    L.push(`- Días registrados: ${nut.length} · días limpios: ${diasLimpios}`);
-    L.push(`- **Adherencia: ${adherencia}%**`);
-    L.push(`- Proteína OK: ${nut.filter((n) => n.proteinaOk).length}/${nut.length} · Hidratación OK: ${nut.filter((n) => n.hidratacionOk).length}/${nut.length} · Sueño OK: ${nut.filter((n) => n.suenoOk).length}/${nut.length}`);
-    L.push(`- Antojos/atracones: ${nut.filter((n) => n.antojo).length}`);
+    L.push(`## Nutrition`);
+    L.push(`- Days logged: ${nut.length} · clean days: ${cleanDays}`);
+    L.push(`- **Adherence: ${adherence}%**`);
+    L.push(`- Protein met: ${nut.filter((n) => n.proteinGoalMet).length}/${nut.length} · Hydration met: ${nut.filter((n) => n.hydrationGoalMet).length}/${nut.length} · Sleep met: ${nut.filter((n) => n.sleepGoalMet).length}/${nut.length}`);
+    L.push(`- Cravings: ${nut.filter((n) => n.craving).length}`);
     L.push(``);
 
-    // Suplementación
-    const totalMomentos = SUPLEMENTACION.protocolo.length;
-    const supDias = Object.entries(suplementosDia)
-      .filter(([fecha, moms]) => moms.length > 0 && new Date(fecha) >= desde)
-      .sort(([a], [b]) => (a > b ? -1 : 1));
-    if (supDias.length > 0) {
-      L.push(`## Suplementación`);
-      const conteo: Record<string, number> = {};
-      for (const [, moms] of supDias) for (const m of moms) conteo[m] = (conteo[m] ?? 0) + 1;
-      for (const p of SUPLEMENTACION.protocolo as any[]) {
-        L.push(`- ${p.momento} (${p.items.join(", ")}): **${conteo[p.momento] ?? 0}/${supDias.length} días**`);
-      }
-      L.push(`- Detalle por día:`);
-      supDias.forEach(([fecha, moms]) =>
-        L.push(`  - ${fmtDate(fecha)}: ${moms.join(" · ")} (${moms.length}/${totalMomentos})`)
-      );
-      L.push(``);
-    }
-
-    // Diario de alimentación (recetas + comidas libres)
-    const diasDiario = Array.from(
-      new Set([...Object.keys(comidasDia), ...Object.keys(comidasLibres)])
-    )
-      .filter((fecha) => new Date(fecha) >= desde)
+    // Food diary (free meals)
+    const diaryDays = Object.keys(freeMeals)
+      .filter((date) => new Date(date) >= since && (freeMeals[date]?.length ?? 0) > 0)
       .sort((a, b) => (a > b ? -1 : 1));
 
-    if (diasDiario.length > 0) {
-      L.push(`## Diario de alimentación`);
-      for (const fecha of diasDiario) {
-        const ids = comidasDia[fecha] ?? [];
-        const libres = comidasLibres[fecha] ?? [];
-        if (!ids.length && !libres.length) continue;
-        const recetasDelDia = allRecipes.filter((r) => ids.includes(r.id));
-        let totalKcal = recetasDelDia.reduce((s, r) => s + r.kcal, 0);
-        const totalMacros = recetasDelDia.reduce(
-          (acc, r) => { const m = parseMacrosRep(r.macros); return { p: acc.p + m.p, c: acc.c + m.c, g: acc.g + m.g }; },
+    if (diaryDays.length > 0) {
+      L.push(`## Food diary`);
+      for (const date of diaryDays) {
+        const meals = freeMeals[date] ?? [];
+        const totalKcal = meals.reduce((s, x) => s + x.kcal, 0);
+        const totals = meals.reduce(
+          (acc, x) => ({ p: acc.p + x.p, c: acc.c + x.c, g: acc.g + x.g }),
           { p: 0, c: 0, g: 0 }
         );
-        for (const x of libres) {
-          totalKcal += x.kcal;
-          totalMacros.p += x.p; totalMacros.c += x.c; totalMacros.g += x.g;
-        }
-        L.push(`### ${fmtDate(fecha)} · ${Math.round(totalKcal)} kcal · ${totalMacros.p}P/${totalMacros.c}C/${totalMacros.g}G`);
-        const porMom: Record<string, any[]> = {};
-        for (const r of recetasDelDia) (porMom[r.momento] ||= []).push(r);
-        for (const [mom, rs] of Object.entries(porMom)) {
-          L.push(`- **${mom}:** ${rs.map((r) => `${r.nombre} (${r.kcal} kcal · ${r.macros})`).join(", ")}`);
-        }
-        if (libres.length) {
-          L.push(`- **Libre:** ${libres.map((x) => `${x.nombre} (${x.kcal} kcal · ${x.p}P/${x.c}C/${x.g}G)`).join(", ")}`);
-        }
+        L.push(`### ${fmtDate(date)} · ${Math.round(totalKcal)} kcal · ${totals.p}P/${totals.c}C/${totals.g}G`);
+        L.push(`- ${meals.map((x) => `${x.name} (${x.kcal} kcal · ${x.p}P/${x.c}C/${x.g}G)`).join(", ")}`);
       }
       L.push(``);
     }
 
     L.push(`---`);
-    L.push(`_Para el entrenador: con esto ajustamos cargas, calorías y la siguiente fase. Escribe "revisión semana X" para generar el nuevo bloque._`);
+    L.push(`_Use this to adjust load, calories and the next phase._`);
     return L.join("\n");
-  }, [mounted, weeks, workouts, bodyLogs, nutricion, comidasDia, comidasLibres, suplementosDia, plan, planStart]);
+  }, [mounted, weeks, workouts, bodyLogs, nutrition, freeMeals, plan, planStart]);
 
   async function copy() {
     await navigator.clipboard.writeText(md);
@@ -175,29 +132,26 @@ export default function Reportes() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `reporte-roxu-${new Date().toISOString().slice(0, 10)}.md`;
+    a.download = `training-report-${new Date().toISOString().slice(0, 10)}.md`;
     a.click();
     URL.revokeObjectURL(url);
   }
   async function share() {
     if (navigator.share) {
       try {
-        await navigator.share({ title: "Reporte Roxu", text: md });
+        await navigator.share({ title: "Training report", text: md });
       } catch {}
     } else {
       copy();
     }
   }
   async function excel() {
-    await exportExcel({
-      plan, planStart, workouts, bodyLogs, nutricion, comidasDia, comidasLibres, suplementosDia,
-      recetas: RECETAS.recetas as any[],
-    });
+    await exportExcel({ plan, planStart, workouts, bodyLogs, nutrition, freeMeals });
   }
 
   return (
     <div className="animate-fade-up">
-      <Header eyebrow="Para el entrenador" title="Reportes" back="/" />
+      <Header eyebrow="Resumen exportable" title="Reportes" back="/" />
 
       <div className="card">
         <div className="label mb-2">{t("Periodo")}</div>
@@ -217,11 +171,8 @@ export default function Reportes() {
       </div>
 
       <button onClick={excel} className="btn-accent mt-4 w-full justify-center gap-2">
-        <FileSpreadsheet size={18} /> {t("Exportar Excel para el entrenador (.xlsx)")}
+        <FileSpreadsheet size={18} /> {t("Exportar Excel (.xlsx)")}
       </button>
-      <p className="mt-2 text-center text-[11px] text-muted">
-        {t("Mismo formato que tu hoja de seguimiento · Pesajes, Entrenos y Nutrición")}
-      </p>
 
       <div className="mt-4 grid grid-cols-3 gap-2">
         <button onClick={copy} className="btn-ghost flex-col py-3 text-xs">
