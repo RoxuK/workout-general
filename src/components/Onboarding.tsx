@@ -49,8 +49,10 @@ After I answer ALL seventeen questions:
     "structure": "Upper / Lower split",
     "summary": "Brief plan summary (2–3 sentences)",
     "phases": [
-      { "name": "Foundation", "weeks": "1–4", "goal": "Phase goal", "rpe": "RPE 6–7" },
-      { "name": "Build", "weeks": "5–8", "goal": "Phase goal", "rpe": "RPE 7–8" }
+      { "name": "Foundation", "weeks": "1–3", "goal": "Phase goal", "rpe": "RPE 6–7" },
+      { "name": "Build", "weeks": "4–7", "goal": "Phase goal", "rpe": "RPE 7–8" },
+      { "name": "Intensify", "weeks": "8–10", "goal": "Phase goal", "rpe": "RPE 8" },
+      { "name": "Deload & retest", "weeks": "11–12", "goal": "Phase goal", "rpe": "RPE 5–6" }
     ],
     "weeklySplit": [
       { "day": "Monday", "session": "Upper A" },
@@ -67,7 +69,9 @@ After I answer ALL seventeen questions:
       "note": "Always warm up before training",
       "steps": [
         { "exercise": "Light cardio", "detail": "5 min easy pace" },
-        { "exercise": "Dynamic stretching", "detail": "Hip circles, shoulder rolls, leg swings" }
+        { "exercise": "Dynamic stretching", "detail": "Hip circles, shoulder rolls, leg swings" },
+        { "exercise": "Activation drill", "detail": "Tailored to today's session and any limitation from question 10" },
+        { "exercise": "Ramp-up sets", "detail": "1-2 light sets of the first exercise before working weight" }
       ]
     },
     "sessions": [
@@ -98,7 +102,10 @@ After I answer ALL seventeen questions:
       }
     ],
     "progressions": [
-      { "phase": "Foundation", "points": ["Add 2.5 kg when you complete all reps cleanly for 2 sessions in a row"] }
+      { "phase": "Foundation", "points": ["Add 2.5 kg on compounds when you complete all reps cleanly for 2 sessions in a row", "Keep accessories at the prescribed reps, focus on form"] },
+      { "phase": "Build", "points": ["Move to 4 sets on main lifts", "Add 2.5–5 kg weekly on compounds if reps are clean", "Introduce a top set + back-off sets on the main lift of each session"] },
+      { "phase": "Intensify", "points": ["Reduce reps slightly, increase load (e.g. 10→8 reps) on compounds", "Add a drop set or rest-pause set on the last exercise of each session"] },
+      { "phase": "Deload & retest", "points": ["Week 11: same exercises at ~60% load, 2 sets only, RPE 5–6", "Week 12: retest key lifts, take new measurements, plan the next block"] }
     ],
     "safetyNote": "Specific, actionable guidance built from whatever injury/limitation I described in question 10 — name the body part and what to avoid or substitute. If I have no limitations, write \\"No specific restrictions noted.\\""
   },
@@ -141,6 +148,9 @@ Rules for the JSON:
 - Adapt every exercise to the equipment I actually have access to
 - "safetyNote" must reflect MY actual answer to question 10 specifically — never invent or assume a body part I didn't mention. If I have no injuries or limitations, just say so
 - Set the exercise "sets"/"reps"/"rest" appropriately for my stated experience level
+- "phases" must cover the full 12 weeks with 3–4 distinct phases (not just 2) — e.g. Foundation/Reactivation, Build, Intensify, Deload & retest — each with a specific phase "goal" tailored to MY actual goal from question 4, not a generic placeholder
+- "progressions" must include one entry per phase (so 3–4 entries total), each with 2–4 concrete, actionable points: specific load increases, rep/set changes, or technique progressions for that phase — not one vague sentence for the whole block
+- "warmup.steps" must have 4–6 steps, including at least one activation drill or mobility step tailored to whatever I described in question 10 (e.g. if I mentioned a knee or shoulder issue, include a warm-up step for that area specifically)
 - "recipes" must have real week-to-week variety, not just one day's worth: generate at least 5 different recipes for EACH meal moment I actually eat (Breakfast, Lunch, Dinner, Snack at minimum; add Pre-workout/Post-workout if relevant to my goal) — roughly 25–35 recipes total, so I'm not eating the exact same meals every few days. Respect any allergies, intolerances, or disliked foods I mentioned, and keep them realistic for the cooking time I said I have. Any single day's combination of recipes should be able to roughly hit my "nutrition" targets
 - Build "shoppingList" by aggregating the ingredients across all "recipes" into a few sensible categories (e.g. Protein, Carbs, Vegetables & fruit, Dairy, Pantry & other) so I can shop from one list
 
