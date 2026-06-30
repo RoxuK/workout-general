@@ -22,7 +22,7 @@ function daysAgo(n: number, hour = 12, min = 0) {
 function buildDemo(plan: ReturnType<typeof useStore.getState>["userConfig"]) {
   const sessions = plan?.plan.sessions.filter((s) => !s.travel) ?? [];
 
-  // ── Workouts: 3 weeks back with a +2.5 kg/week progression ─────────────
+  // ── Workouts: 3 weeks back with a +2.5 kg/week progression ─────────────────
   const workouts: WorkoutLog[] = [];
   if (sessions.length) {
     for (let ago = 21; ago >= 1; ago--) {
@@ -50,14 +50,14 @@ function buildDemo(plan: ReturnType<typeof useStore.getState>["userConfig"]) {
           };
         }),
         rpe: week === 0 ? 7 : 8,
-        lowerBack: ago % 3 === 0 ? 5 : 4,
+        soreness: ago % 3 === 0 ? 5 : 4,
         notes: "",
       };
       workouts.push(w);
     }
   }
 
-  // ── Weigh-ins: every 3 days, 86.0 → 84.5 kg ───────────────────────
+  // ── Weigh-ins: every 3 days, 86.0 → 84.5 kg ─────────────────────────────
   const weights = [86.0, 85.7, 85.5, 85.3, 85.0, 84.9, 84.7, 84.5];
   const bodyLogs: BodyLog[] = weights.map((weight, i) => {
     const date = daysAgo(21 - i * 3, 8, 0);
@@ -76,7 +76,7 @@ function buildDemo(plan: ReturnType<typeof useStore.getState>["userConfig"]) {
     };
   });
 
-  // ── Nutrition: last 14 days ───────────────────────────────────────
+  // ── Nutrition: last 14 days ───────────────────────────────────────────────
   const nutrition: Record<string, NutritionLog> = {};
   for (let ago = 13; ago >= 0; ago--) {
     const k = dayKey(daysAgo(ago));
@@ -93,7 +93,7 @@ function buildDemo(plan: ReturnType<typeof useStore.getState>["userConfig"]) {
     };
   }
 
-  // ── Schedule: today gets whatever's next in the rotation ────────────────
+  // ── Schedule: today gets whatever's next in the rotation ──────────────────
   const schedule: Record<string, string> = {};
   if (sessions.length) {
     const todayDow = new Date().getDay();

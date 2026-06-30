@@ -73,7 +73,7 @@ export default function Player() {
   );
   const [logs, setLogs] = useState<ExerciseLog[]>([]);
   const [rpe, setRpe] = useState(7);
-  const [lowerBack, setLowerBack] = useState(4);
+  const [soreness, setSoreness] = useState(4);
   const [notes, setNotes] = useState("");
   const [saved, setSaved] = useState(false);
   const [done, setDone] = useState<Summary | null>(null);
@@ -127,7 +127,7 @@ export default function Player() {
       sessionName: session!.name,
       exercises: logs,
       rpe,
-      lowerBack,
+      soreness,
       notes,
     };
 
@@ -248,7 +248,6 @@ export default function Player() {
                         {pr && pr.kg > 0 && (
                           <span className="chip border-accent/50 text-accent">🏆 {pr.kg} kg × {pr.reps}</span>
                         )}
-                        {ej.lowerBack && <span className="chip border-warn/50 text-warn">{t("lumbar")}</span>}
                         {ej.core && <span className="chip">{t("core")}</span>}
                       </div>
                     </div>
@@ -297,7 +296,7 @@ export default function Player() {
             </p>
           )}
 
-          {/* RPE + lower back */}
+          {/* RPE + recovery */}
           <div className="mt-5 card space-y-5">
             <Slider
               label={t("RPE de la sesión")}
@@ -308,18 +307,18 @@ export default function Player() {
               onChange={setRpe}
             />
             <Slider
-              label={t("Sensación lumbar")}
+              label={t("Cómo se sintió tu cuerpo")}
               hint={t("1 mal · 5 perfecta")}
               min={1}
               max={5}
-              value={lowerBack}
-              onChange={setLowerBack}
-              tone={lowerBack <= 2 ? "bad" : "good"}
+              value={soreness}
+              onChange={setSoreness}
+              tone={soreness <= 2 ? "bad" : "good"}
             />
-            {lowerBack <= 2 && (
+            {soreness <= 2 && plan.safetyNote && (
               <div className="rounded-xl border border-bad/40 bg-bad/10 p-3 text-xs text-muted">
                 <div className="mb-1 flex items-center gap-1 font-medium text-bad">
-                  <AlertTriangle size={14} /> {t("Atención lumbar")}
+                  <AlertTriangle size={14} /> {t("Aviso")}
                 </div>
                 {t(plan.safetyNote)}
               </div>
@@ -352,7 +351,7 @@ export default function Player() {
   );
 }
 
-// ─── Session close ───────────────────────────────────────────────────────────
+// ─── Session close ────────────────────────────────────────────────────────────────────────
 
 type Summary = {
   durationMin: number | null;
@@ -576,7 +575,7 @@ function Warmup({
   return (
     <div className="mt-5 animate-fade-up">
       <div className="mb-3 flex items-center gap-2 text-sm text-accent">
-        <Flame size={16} /> {t("Calentamiento")} {duration} · {t("obligatorio con tu lumbar")}
+        <Flame size={16} /> {t("Calentamiento")} {duration} · {t("no te lo saltes")}
       </div>
       <div className="space-y-2">
         {steps.map((p, i) => (
