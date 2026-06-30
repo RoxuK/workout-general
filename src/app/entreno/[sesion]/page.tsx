@@ -17,7 +17,7 @@ import {
   Home,
   TrendingUp,
 } from "lucide-react";
-import { getPlanActivo } from "@/lib/content";
+import { useActivePlan } from "@/lib/user-content";
 import { useStore } from "@/lib/store";
 import type { EjercicioLog, SetLog, WorkoutLog } from "@/lib/types";
 import { uid, todayISO, bestSet, fmtDate } from "@/lib/utils";
@@ -52,7 +52,7 @@ function useWakeLock(active: boolean) {
 
 export default function Player() {
   const params = useParams<{ sesion: string }>();
-  const plan = getPlanActivo();
+  const plan = useActivePlan();
   const t = useT();
   const sesion = plan.sesiones.find((s) => s.id === params.sesion);
 
@@ -352,7 +352,7 @@ export default function Player() {
   );
 }
 
-// ─── Cierre de sesión ────────────────────────────────────────────────────────
+// ─── Cierre de sesión ────────────────────────────────────────────────────────────────
 
 type Resumen = {
   duracionMin: number | null;
