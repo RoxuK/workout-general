@@ -5,7 +5,6 @@ export type Exercise = {
   rest: string;
   notes?: string;
   core?: boolean;
-  lowerBack?: boolean;
 };
 
 export type Session = {
@@ -67,7 +66,7 @@ export type WorkoutLog = {
   sessionName: string;
   exercises: ExerciseLog[];
   rpe: number | null;
-  lowerBack: number | null; // 1 (bad) - 5 (perfect)
+  soreness: number | null; // 1 (bad) - 5 (perfect): how the body felt overall, not tied to any one body part
   notes: string;
 };
 
@@ -107,9 +106,29 @@ export type NutritionTargets = {
   note?: string;
 };
 
+export type Recipe = {
+  id: string;
+  name: string;
+  moment: string; // "Breakfast" | "Lunch" | "Dinner" | "Snack" | "Pre-workout" | "Post-workout" (free text)
+  time: string; // prep time, e.g. "10 min"
+  kcal: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+  ingredients: string[];
+  steps: string[];
+};
+
+export type ShoppingCategory = {
+  category: string;
+  items: string[];
+};
+
 export type UserConfig = {
   plan: Plan;
   nutrition: NutritionTargets;
+  recipes: Recipe[];
+  shoppingList: ShoppingCategory[];
 };
 
 // Meal logged outside the recipe book (catalog, hand-portion estimate, or generic)

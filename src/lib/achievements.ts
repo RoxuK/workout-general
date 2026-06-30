@@ -5,7 +5,7 @@ export type Categoria =
   | "Entrenos"
   | "Constancia"
   | "Fuerza"
-  | "Salud lumbar"
+  | "Recuperación"
   | "Cuerpo"
   | "Nutrición"
   | "Especiales";
@@ -14,7 +14,7 @@ export const CATEGORIAS: Categoria[] = [
   "Entrenos",
   "Constancia",
   "Fuerza",
-  "Salud lumbar",
+  "Recuperación",
   "Cuerpo",
   "Nutrición",
   "Especiales",
@@ -140,11 +140,11 @@ export function computeAchievements(data: Data, plan: Plan, planStart?: string |
         }
       }
 
-  // --- Intensity and lower back ---
+  // --- Intensity and recovery ---
   const rpe9 = workouts.filter((w) => (w.rpe ?? 0) >= 9).length;
   const rpe8 = workouts.filter((w) => (w.rpe ?? 0) >= 8).length;
-  const lowerBack4 = workouts.filter((w) => (w.lowerBack ?? 0) >= 4).length;
-  const lowerBack5 = workouts.filter((w) => (w.lowerBack ?? 0) >= 5).length;
+  const soreness4 = workouts.filter((w) => (w.soreness ?? 0) >= 4).length;
+  const soreness5 = workouts.filter((w) => (w.soreness ?? 0) >= 5).length;
 
   // --- Weight and composition (base = first real weigh-in, not the plan's number) ---
   const baseWeight = effectiveStartingWeight(plan, bodyLogs, planStart);
@@ -213,10 +213,10 @@ export function computeAchievements(data: Data, plan: Plan, planStart?: string |
     make("Fuerza", "rpe-alto", "😤", "Sin excusas", "Una sesión a RPE 9 o más", rpe9, 1),
     make("Fuerza", "esfuerzo-10", "🥵", "Esfuerzo real", "10 sesiones a RPE 8+", rpe8, 10),
 
-    // ====== Salud lumbar ======
-    make("Salud lumbar", "lumbar-acero", "🧱", "Espalda de acero", "5 sesiones con lumbar 4+/5", lowerBack4, 5),
-    make("Salud lumbar", "lumbar-perfecto", "🛡️", "Núcleo blindado", "3 sesiones con lumbar 5/5", lowerBack5, 3),
-    make("Salud lumbar", "sin-dolor-15", "🧘", "Sin molestias", "15 sesiones con lumbar 4+/5", lowerBack4, 15),
+    // ====== Recuperación ======
+    make("Recuperación", "cuerpo-fuerte", "🧱", "Cuerpo a tope", "5 sesiones con sensación 4+/5", soreness4, 5),
+    make("Recuperación", "recuperacion-perfecta", "🛡️", "Recuperación perfecta", "3 sesiones con sensación 5/5", soreness5, 3),
+    make("Recuperación", "sin-molestias-15", "🧘", "Sin molestias", "15 sesiones con sensación 4+/5", soreness4, 15),
 
     // ====== Cuerpo (peso y medidas) ======
     make("Cuerpo", "primer-pesaje", "📏", "Toma de contacto", "Registra tu primer pesaje", bodyLogs.length, 1),
@@ -231,13 +231,13 @@ export function computeAchievements(data: Data, plan: Plan, planStart?: string |
     make("Nutrición", "disciplina", "🥗", "Disciplina", "14 días limpios de nutrición", cleanDays, 14),
     make("Nutrición", "mes-limpio", "🏵️", "Mes impecable", "30 días limpios de nutrición", cleanDays, 30),
     make("Nutrición", "racha-limpia-7", "🌱", "Semana limpia", "7 días limpios seguidos", cleanStreak, 7),
-    make("Nutrición", "hidratado", "💧", "Hidratada", "14 días cumpliendo el agua", hydration, 14),
+    make("Nutrición", "hidratado", "💧", "Bien hidratado", "14 días cumpliendo el agua", hydration, 14),
     make("Nutrición", "proteina-pro", "🍗", "Proteína al día", "14 días llegando a la proteína", protein, 14),
     make("Nutrición", "buen-descanso", "😴", "Buen descanso", "14 días durmiendo bien", sleep, 14),
 
     // ====== Especiales ======
     make("Especiales", "todoterreno", "🧩", "Todoterreno", "Entrena cada una de tus sesiones", distinctSessions, totalSessions),
-    make("Especiales", "guerrera-finde", "🌅", "Guerrera de finde", "Entrena un sábado o domingo", weekend, 1),
-    make("Especiales", "madrugadora", "🌄", "Madrugadora", "Entrena antes de las 9:00", earlyBird, 1),
+    make("Especiales", "finde-activo", "🌅", "Fin de semana activo", "Entrena un sábado o domingo", weekend, 1),
+    make("Especiales", "al-amanecer", "🌄", "Al amanecer", "Entrena antes de las 9:00", earlyBird, 1),
   ];
 }

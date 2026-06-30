@@ -20,6 +20,7 @@ type State = {
   bodyLogs: BodyLog[];
   nutrition: Record<string, NutritionLog>; // by dayKey
   freeMeals: Record<string, FreeMeal[]>;   // dayKey -> off-plan meals logged that day
+  recipesEaten: Record<string, string[]>;  // dayKey -> recipe ids marked eaten that day
   planStart: string | null;                // YYYY-MM-DD — real date the user starts the plan
   schedule: Record<string, string>;        // dayKey -> sessionId the user decides to train that day
   _hydrated: boolean;
@@ -40,6 +41,8 @@ type State = {
   addFreeMeal: (date: string, item: FreeMeal) => void;
   removeFreeMeal: (date: string, id: string) => void;
 
+  toggleRecipeEaten: (date: string, recipeId: string) => void;
+
   setPlanStart: (date: string | null) => void;
 
   setSchedule: (date: string, sessionId: string | null) => void;
@@ -50,7 +53,7 @@ type State = {
   reminders: Reminder[];
   updateReminder: (id: string, patch: Partial<Reminder>) => void;
 
-  importData: (data: Partial<Pick<State, "workouts" | "bodyLogs" | "nutrition" | "freeMeals" | "planStart" | "schedule">>) => void;
+  importData: (data: Partial<Pick<State, "workouts" | "bodyLogs" | "nutrition" | "freeMeals" | "recipesEaten" | "planStart" | "schedule">>) => void;
   clearAll: () => void;
 
   userName: string | null;
@@ -60,7 +63,7 @@ type State = {
   resetUser: () => void;
 };
 
-const empty = { workouts: [], bodyLogs: [], nutrition: {}, freeMeals: {}, planStart: null, schedule: {} };
+const empty = { workouts: [], bodyLogs: [], nutrition: {}, freeMeals: {}, recipesEaten: {}, planStart: null, schedule: {} };
 const emptyUser = { userName: null, userConfig: null };
 
 export const useStore = create<State>()(
@@ -110,6 +113,13 @@ export const useStore = create<State>()(
           },
         })),
 
+      toggleRecipeEaten: (date, recipeId) =>
+        set((s) => {
+          const cur = s.recipesEaten[date] ?? [];
+          const next = cur.includes(recipeId) ? cur.filter((id) => id !== recipeId) : [...cur, recipeId];
+          return { recipesEaten: { ...s.recipesEaten, [date]: next } };
+        }),
+
       setPlanStart: (date) => set({ planStart: date }),
 
       setSchedule: (date, sessionId) =>
@@ -131,6 +141,7 @@ export const useStore = create<State>()(
           bodyLogs: (data.bodyLogs ?? s.bodyLogs).slice().sort(byDateDesc),
           nutrition: data.nutrition ?? s.nutrition,
           freeMeals: data.freeMeals ?? s.freeMeals,
+          recipesEaten: data.recipesEaten ?? s.recipesEaten,
           planStart: data.planStart !== undefined ? data.planStart : s.planStart,
           schedule: data.schedule ?? s.schedule,
         })),
@@ -142,12 +153,13 @@ export const useStore = create<State>()(
     }),
     {
       name: "roxu-fit-v1",
-      version: 3,
+      version: 4,
       // v3 renamed every field from Spanish to English (fecha -> date, etc.).
+      // v4 renamed WorkoutLog.lowerBack -> soreness and added recipesEaten.
       // Older persisted data isn't shape-compatible, so start fresh instead
       // of carrying over now-mismatched keys.
       migrate: (persisted: any, version) => {
-        if (version < 3) return { reminders: DEFAULT_REMINDERS };
+        if (version < 4) return { reminders: DEFAULT_REMINDERS };
         if (persisted?.reminders) {
           const ids = new Set(persisted.reminders.map((r: any) => r.id));
           for (const d of DEFAULT_REMINDERS) {

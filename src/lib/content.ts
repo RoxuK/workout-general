@@ -1,17 +1,81 @@
-import type { Plan, BodyLog, NutritionTargets } from "./types";
+import type { Plan, BodyLog, NutritionTargets, Recipe, ShoppingCategory } from "./types";
 import freeMeals from "../../content/nutrition/free-meals.json";
-import exerciseImages from "../../content/knowledge/ejercicios-imagenes.json";
+import exerciseImageIndex from "../../content/knowledge/exercise-images.json";
 
 export const FREE_MEALS = freeMeals;
 
-// Exercise name -> reference images (free-exercise-db, open license).
-// Keyed by the exact exercise name from a plan, so it only matches when the
-// onboarding-generated plan happens to reuse a name from the source dataset.
-export const EXERCISE_IMAGES: Record<string, { fuente: string | null; imagenes: string[] }> =
-  exerciseImages as any;
+// free-exercise-db (yuhonas/free-exercise-db, public domain) trimmed to just
+// what we need to build image URLs: name, id (the CDN folder), and how many
+// numbered images that exercise has.
+type ExerciseImageEntry = { name: string; id: string; n: number };
+const EXERCISE_IMAGE_INDEX = exerciseImageIndex as ExerciseImageEntry[];
 
-export function imagesFor(name: string) {
-  return EXERCISE_IMAGES[name]?.imagenes ?? [];
+function normalize(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/\(.*?\)/g, " ") // drop parenthetical asides, e.g. "(or X if Y)"
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const STOP_WORDS = new Set(["or", "if", "and", "with", "the", "a", "uncomfortable", "preferred", "wide", "grip", "light", "heavy"]);
+
+function words(s: string): Set<string> {
+  return new Set(
+    normalize(s)
+      .split(" ")
+      .filter((w) => w.length > 1 && !STOP_WORDS.has(w))
+      .map((w) => (w.length > 4 && w.endsWith("s") ? w.slice(0, -1) : w)) // light stemming for plurals
+  );
+}
+
+// Plan exercises often read like "Leg Press or Hack Squat" or include a
+// parenthetical alternative — match against the first/primary option.
+function primaryName(name: string): string {
+  const noParens = name.replace(/\(.*?\)/g, " ").trim();
+  return noParens.split(/\bor\b/i)[0].trim() || noParens;
+}
+
+const indexCache = new Map<string, { id: string; n: number } | null>();
+
+function findMatch(name: string): { id: string; n: number } | null {
+  const query = primaryName(name);
+  if (indexCache.has(query)) return indexCache.get(query)!;
+
+  const normQuery = normalize(query);
+  const queryWords = words(query);
+  let best: { id: string; n: number } | null = null;
+  let bestScore = 0;
+
+  for (const e of EXERCISE_IMAGE_INDEX) {
+    const normCandidate = normalize(e.name);
+    if (normCandidate === normQuery) {
+      best = { id: e.id, n: e.n };
+      bestScore = 1;
+      break;
+    }
+    const candidateWords = words(e.name);
+    let overlap = 0;
+    for (const w of queryWords) if (candidateWords.has(w)) overlap++;
+    const dice = (2 * overlap) / (queryWords.size + candidateWords.size || 1);
+    if (dice > bestScore) {
+      bestScore = dice;
+      best = { id: e.id, n: e.n };
+    }
+  }
+
+  const result = bestScore >= 0.45 ? best : null;
+  indexCache.set(query, result);
+  return result;
+}
+
+export function imagesFor(name: string): string[] {
+  const match = findMatch(name);
+  if (!match) return [];
+  return Array.from({ length: match.n }, (_, i) =>
+    `https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/${match.id}/${i}.jpg`
+  );
 }
 
 // Used before onboarding finishes (the page tree still renders behind the
@@ -36,6 +100,8 @@ export const EMPTY_PLAN: Plan = {
 };
 
 export const EMPTY_NUTRITION: NutritionTargets = { kcal: 0, protein: 0, carbs: 0, fats: 0 };
+export const EMPTY_RECIPES: Recipe[] = [];
+export const EMPTY_SHOPPING_LIST: ShoppingCategory[] = [];
 
 // Effective start date: whatever the user picked in the app takes priority
 // over the plan's fixed date, so the plan adapts to real life.

@@ -1,4 +1,4 @@
-import type { WorkoutLog, BodyLog, NutritionLog, Plan, FreeMeal } from "./types";
+import type { WorkoutLog, BodyLog, NutritionLog, Plan, FreeMeal, Recipe } from "./types";
 import { planWeek, effectiveStartingWeight, latestWeight } from "./content";
 
 function fmt(d: string) {
@@ -23,6 +23,8 @@ export type ExportOpts = {
   bodyLogs: BodyLog[];
   nutrition: Record<string, NutritionLog>;
   freeMeals?: Record<string, FreeMeal[]>;
+  recipes?: Recipe[];
+  recipesEaten?: Record<string, string[]>;
 };
 
 /**
@@ -32,6 +34,8 @@ export async function exportExcel(opts: ExportOpts) {
   const XLSX = await import("xlsx");
   const { plan, planStart, workouts, bodyLogs, nutrition } = opts;
   const freeMeals = opts.freeMeals ?? {};
+  const recipesEaten = opts.recipesEaten ?? {};
+  const recipeById = new Map((opts.recipes ?? []).map((r) => [r.id, r]));
   const wb = XLSX.utils.book_new();
 
   // ── Summary ──────────────────────────────────────────────────────────────
@@ -84,7 +88,7 @@ export async function exportExcel(opts: ExportOpts) {
   // ── Workouts ─────────────────────────────────────────────────────────────
   const workoutHdr = [
     "Date", "Session", "Exercise", "Set 1 (kg x reps)", "Set 2 (kg x reps)",
-    "Set 3 (kg x reps)", "Set 4 (kg x reps)", "RPE (1-10)", "Lower back (1-5)", "Notes",
+    "Set 3 (kg x reps)", "Set 4 (kg x reps)", "RPE (1-10)", "Soreness (1-5)", "Notes",
   ];
   const wk = [...workouts].sort((a, b) => (a.date < b.date ? -1 : 1));
   const workoutRows: any[][] = [];
@@ -96,7 +100,7 @@ export async function exportExcel(opts: ExportOpts) {
         e.name,
         setStr(e.sets[0]), setStr(e.sets[1]), setStr(e.sets[2]), setStr(e.sets[3]),
         idx === 0 ? (w.rpe ?? "") : "",
-        idx === 0 ? (w.lowerBack ?? "") : "",
+        idx === 0 ? (w.soreness ?? "") : "",
         idx === 0 ? w.notes : "",
       ]);
     });
@@ -108,13 +112,20 @@ export async function exportExcel(opts: ExportOpts) {
   // ── Nutrition ────────────────────────────────────────────────────────────
   const nutHdr = [
     "Date", "Calories eaten", "Protein (g)", "Ate out", "Hydration",
-    "Sleep", "Cravings", "Clean day (✓/✗)", "Free meals logged", "Notes",
+    "Sleep", "Cravings", "Clean day (✓/✗)", "Meals logged", "Notes",
   ];
-  const days = Array.from(new Set([...Object.keys(nutrition), ...Object.keys(freeMeals)])).sort();
+  const days = Array.from(new Set([...Object.keys(nutrition), ...Object.keys(freeMeals), ...Object.keys(recipesEaten)])).sort();
   const nutRows = days.map((d) => {
     const log = nutrition[d];
     let kcal = 0, prot = 0;
     const names: string[] = [];
+    for (const id of recipesEaten[d] || []) {
+      const r = recipeById.get(id);
+      if (!r) continue;
+      kcal += r.kcal;
+      prot += r.protein;
+      names.push(r.name);
+    }
     for (const x of freeMeals[d] || []) {
       kcal += x.kcal;
       prot += x.p;
