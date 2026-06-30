@@ -67,6 +67,7 @@ type State = {
   userConfig: UserConfig | null;
   setUserName: (name: string) => void;
   setUserConfig: (config: UserConfig) => void;
+  clearPlan: () => void;
   resetUser: () => void;
 };
 
@@ -165,6 +166,10 @@ export const useStore = create<State>()(
 
       setUserName: (name) => set({ userName: name }),
       setUserConfig: (config) => set({ userConfig: config }),
+      // Drops only the plan/nutrition config, keeping the name and all logged
+      // history — used by "Generate plan with AI" in Settings to re-run the
+      // onboarding flow without wiping the user's data.
+      clearPlan: () => set({ userConfig: null }),
       resetUser: () => set({ ...empty, ...emptyUser }),
     }),
     {

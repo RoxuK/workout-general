@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { ClipboardCopy, Check, AlertCircle, ExternalLink, ArrowRight } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ClipboardCopy, Check, AlertCircle, ArrowRight } from "lucide-react";
 import { useStore } from "@/lib/store";
+import { buildDefaultConfig } from "@/lib/default-plan";
 import type { UserConfig } from "@/lib/types";
 
-// The prompt the user copies into claude.ai to generate their plan JSON
-const CLAUDE_PROMPT = `You are a certified personal trainer and registered dietitian with 15+ years of experience designing individualized strength training and nutrition programs, including full meal plans and grocery lists. You're running an intake consultation with a new client before writing their first program.
+// The prompt the user copies into an AI chat assistant (Claude, ChatGPT, Gemini,
+// or any other LLM) to generate their plan JSON. Intentionally not tied to one
+// provider — the app works the same regardless of which assistant answers it.
+const AI_PROMPT = `You are a certified personal trainer and registered dietitian with 15+ years of experience designing individualized strength training and nutrition programs, including full meal plans and grocery lists. You're running an intake consultation with a new client before writing their first program.
 
 IMPORTANT: No matter what language I answer in, write EVERY part of your output — the assessment and the JSON — in English.
 
@@ -179,8 +182,15 @@ export default function Onboarding() {
   const [json, setJson] = useState("");
   const [error, setError] = useState<string | null>(null);
 
+  const existingName = useStore((s) => s.userName);
   const setUserName = useStore((s) => s.setUserName);
   const setUserConfig = useStore((s) => s.setUserConfig);
+
+  // Re-entering from Settings → "Generate plan with AI" already has a name
+  // on file, so skip straight to the prompt step instead of asking again.
+  useEffect(() => {
+    if (existingName) setStep(1);
+  }, [existingName]);
 
   function handleNameSubmit() {
     const trimmed = name.trim();
@@ -189,9 +199,16 @@ export default function Onboarding() {
     setStep(1);
   }
 
+  function handleSkip() {
+    if (existingName) setUserName(existingName);
+    else if (name.trim()) setUserName(name.trim());
+    else setUserName("there");
+    setUserConfig(buildDefaultConfig());
+  }
+
   async function handleCopy() {
     try {
-      await navigator.clipboard.writeText(CLAUDE_PROMPT);
+      await navigator.clipboard.writeText(AI_PROMPT);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } catch {
@@ -203,16 +220,16 @@ export default function Onboarding() {
     setError(null);
     let parsed: unknown;
     try {
-      // strip markdown code fences if user copied the whole claude response
+      // strip markdown code fences if the user copied the whole AI response
       const clean = json.trim().replace(/^```json\s*/i, "").replace(/```\s*$/, "");
       parsed = JSON.parse(clean);
     } catch {
-      setError("Could not parse JSON. Make sure you copied only the JSON block Claude gave you.");
+      setError("Could not parse JSON. Make sure you copied only the JSON block the AI gave you.");
       return;
     }
     const err = validateConfig(parsed);
     if (err) {
-      setError(`Invalid plan: ${err}. Ask Claude to regenerate the JSON block.`);
+      setError(`Invalid plan: ${err}. Ask the AI to regenerate the JSON block.`);
       return;
     }
     const config = parsed as UserConfig;
@@ -266,22 +283,14 @@ export default function Onboarding() {
         </div>
       )}
 
-      {/* Step 1: Copy Claude prompt */}
+      {/* Step 1: Copy the AI prompt */}
       {step === 1 && (
         <div>
           <p className="label mb-1">Build your plan</p>
-          <h1 className="font-display text-4xl mb-2">Chat with Claude</h1>
+          <h1 className="font-display text-4xl mb-2">Chat with an AI assistant</h1>
           <p className="text-sm text-muted mb-6">
-            Copy the prompt below and paste it into{" "}
-            <a
-              href="https://claude.ai"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-accent underline"
-            >
-              claude.ai
-            </a>
-            . Claude will run a full intake interview and generate your personalised training and nutrition plan.
+            Copy the prompt below and paste it into any AI chat assistant you already use — Claude, ChatGPT, Gemini, or similar.
+            It will run a full intake interview and generate your personalised training and nutrition plan.
           </p>
 
           <div className="relative">
@@ -289,7 +298,7 @@ export default function Onboarding() {
               readOnly
               className="w-full rounded-xl border border-line bg-surface px-4 py-3 text-xs text-muted font-mono resize-none focus:outline-none"
               rows={8}
-              value={CLAUDE_PROMPT}
+              value={AI_PROMPT}
             />
             <button
               onClick={handleCopy}
@@ -300,20 +309,18 @@ export default function Onboarding() {
             </button>
           </div>
 
-          <a
-            href="https://claude.ai"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-ghost mt-3 w-full flex items-center justify-center gap-2"
-          >
-            Open claude.ai <ExternalLink size={14} />
-          </a>
-
           <button
             className="btn mt-3 w-full flex items-center justify-center gap-2"
             onClick={() => setStep(2)}
           >
             I have my JSON <ArrowRight size={16} />
+          </button>
+
+          <button
+            className="btn-ghost mt-2 w-full text-sm"
+            onClick={handleSkip}
+          >
+            Skip for now — use a generic starter plan
           </button>
         </div>
       )}
@@ -324,7 +331,7 @@ export default function Onboarding() {
           <p className="label mb-1">Almost done</p>
           <h1 className="font-display text-4xl mb-2">Import your plan</h1>
           <p className="text-sm text-muted mb-6">
-            Paste the JSON block Claude gave you at the end of your conversation.
+            Paste the JSON block the AI gave you at the end of your conversation.
           </p>
 
           <textarea

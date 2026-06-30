@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Download, Upload, Trash2, Smartphone, Check, Bell, ChevronRight, FileSpreadsheet, Palette } from "lucide-react";
+import { Download, Upload, Trash2, Smartphone, Check, Bell, ChevronRight, FileSpreadsheet, Palette, Sparkles } from "lucide-react";
 import Header from "@/components/Header";
 import { useStore } from "@/lib/store";
 import { useActivePlan, useRecipes } from "@/lib/user-content";
@@ -23,6 +23,7 @@ export default function Ajustes() {
   const importData = useStore((s) => s.importData);
   const clearAll = useStore((s) => s.clearAll);
   const resetUser = useStore((s) => s.resetUser);
+  const clearPlan = useStore((s) => s.clearPlan);
   const plan = useActivePlan();
   const recipes = useRecipes();
   const t = useT();
@@ -110,6 +111,25 @@ export default function Ajustes() {
           {workouts.length} {t("entrenos")} · {bodyLogs.length} {t("pesajes")} · {Object.keys(nutrition).length} {t("días de nutrición.")}{" "}
           {t("Todo se guarda en este teléfono.")}
         </p>
+      </div>
+
+      <div className="mt-4 card border-accent/30">
+        <div className="mb-1 flex items-center gap-2 font-medium text-accent">
+          <Sparkles size={18} /> Generate plan with AI
+        </div>
+        <p className="mb-3 text-xs text-muted">
+          Run the AI intake interview to replace your current plan with one tailored to you. Your workout history, weigh-ins and nutrition logs are kept.
+        </p>
+        <button
+          onClick={() => {
+            if (confirm("This replaces your current plan, nutrition targets, recipes and shopping list with a freshly generated one. Your logged workouts, weigh-ins and nutrition history are kept. Continue?")) {
+              clearPlan();
+            }
+          }}
+          className="btn-accent w-full justify-center gap-2"
+        >
+          <Sparkles size={18} /> Generate plan with AI
+        </button>
       </div>
 
       <div className="mt-4 card border-accent/30">
