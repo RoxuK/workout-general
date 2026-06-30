@@ -1,4 +1,4 @@
-import type { Plan, BodyLog, NutritionTargets, Recipe, ShoppingCategory } from "./types";
+import type { Plan, BodyLog, NutritionTargets, Recipe, ShoppingCategory, CycleLog } from "./types";
 import freeMeals from "../../content/nutrition/free-meals.json";
 import exerciseImages1 from "../../content/knowledge/exercise-images-1.json";
 import exerciseImages2 from "../../content/knowledge/exercise-images-2.json";
@@ -176,4 +176,98 @@ export function latestWeight(bodyLogs: BodyLog[]): number | null {
     .map((b) => ({ t: new Date(b.date).getTime(), weight: Number(b.weight) }))
     .sort((a, b) => b.t - a.t);
   return weights[0]?.weight ?? null;
+}
+
+// ── Menstrual cycle ────────────────────────────────────────────────────────
+// Ported from ena-fit (C:\workout Ena\ena-fit\src\lib\content.ts), trimmed to
+// just the tracking math — no steps/activity logic from that app.
+
+export type CyclePhase = "menstrual" | "follicular" | "ovulation" | "luteal";
+
+export type CycleInfo = {
+  hasData: boolean;
+  lastStart: string | null; // YYYY-MM-DD
+  day: number | null; // cycle day (1-based)
+  phase: CyclePhase | null;
+  nextStart: string | null; // predicted YYYY-MM-DD
+  daysToNext: number | null;
+  avgLength: number; // observed or default
+};
+
+export const PHASE_LABEL: Record<CyclePhase, string> = {
+  menstrual: "Menstrual",
+  follicular: "Follicular",
+  ovulation: "Ovulation",
+  luteal: "Luteal",
+};
+
+export const PHASE_EMOJI: Record<CyclePhase, string> = {
+  menstrual: "🩸",
+  follicular: "🌱",
+  ovulation: "🌕",
+  luteal: "🌗",
+};
+
+function dkey(d: Date) {
+  const off = d.getTimezoneOffset();
+  return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
+}
+
+function daysBetween(a: string, b: string) {
+  return Math.round(
+    (new Date(b + "T00:00:00").getTime() - new Date(a + "T00:00:00").getTime()) / 86400000
+  );
+}
+
+export function phaseForDay(day: number, avgLength: number, periodLength: number): CyclePhase {
+  const ovulation = avgLength - 14; // luteal phase is ~constant 14 days
+  if (day <= periodLength) return "menstrual";
+  if (day < ovulation - 1) return "follicular";
+  if (day <= ovulation + 1) return "ovulation";
+  return "luteal";
+}
+
+export function cycleInfo(
+  periods: CycleLog[],
+  defaultAvg: number,
+  periodLength: number,
+  today = new Date()
+): CycleInfo {
+  const starts = periods
+    .map((p) => p.start)
+    .filter(Boolean)
+    .sort();
+
+  if (!starts.length) {
+    return {
+      hasData: false,
+      lastStart: null,
+      day: null,
+      phase: null,
+      nextStart: null,
+      daysToNext: null,
+      avgLength: defaultAvg,
+    };
+  }
+
+  // Observed average cycle length from the gaps between starts (fallback to default)
+  let avg = defaultAvg;
+  if (starts.length >= 2) {
+    const gaps: number[] = [];
+    for (let i = 1; i < starts.length; i++) gaps.push(daysBetween(starts[i - 1], starts[i]));
+    const reasonable = gaps.filter((g) => g >= 18 && g <= 45);
+    if (reasonable.length) avg = Math.round(reasonable.reduce((a, b) => a + b, 0) / reasonable.length);
+  }
+
+  const todayKey = dkey(today);
+  const lastStart = [...starts].reverse().find((s) => s <= todayKey) ?? starts[starts.length - 1];
+  const day = daysBetween(lastStart, todayKey) + 1;
+  const phase = phaseForDay(day, avg, periodLength);
+
+  const next = new Date(lastStart + "T00:00:00");
+  next.setDate(next.getDate() + avg);
+  const nextStart = dkey(next);
+  const daysToNext = daysBetween(todayKey, nextStart);
+
+  return { hasData: true, lastStart, day, phase, nextStart, daysToNext, avgLength: avg };
 }

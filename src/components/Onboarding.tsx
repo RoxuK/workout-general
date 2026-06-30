@@ -36,6 +36,8 @@ After I answer ALL seventeen questions:
 
 \`\`\`json
 {
+  "sex": "female",
+  "goal": "recomposition",
   "plan": {
     "id": "block-1",
     "name": "Plan name",
@@ -131,13 +133,15 @@ After I answer ALL seventeen questions:
 \`\`\`
 
 Rules for the JSON:
+- "sex" must be exactly "male", "female", or "other", taken directly from my answer to question 1
+- "goal" must be exactly one of "lose-fat", "build-muscle", "recomposition", "general-fitness", or "athletic-performance", taken from my answer to question 4 (pick the closest match)
 - "weeklySplit[].day" MUST use English day names: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
 - Include 3–5 training sessions in "sessions" depending on how many days I said I can train, each with 6–8 exercises. If I said I travel often or want a backup workout, include one extra session with "travel": true and "equipment": "No equipment" (or similar), made of bodyweight-only exercises — it does not need to appear in "weeklySplit"
 - Set "startDate" to today's date and "endDate" to 12 weeks from today
 - Adapt every exercise to the equipment I actually have access to
 - "safetyNote" must reflect MY actual answer to question 10 specifically — never invent or assume a body part I didn't mention. If I have no injuries or limitations, just say so
 - Set the exercise "sets"/"reps"/"rest" appropriately for my stated experience level
-- Generate 10–15 "recipes" covering Breakfast, Lunch, Dinner, and Snack at minimum (add Pre-workout/Post-workout if relevant to my goal), respecting any allergies, intolerances, or disliked foods I mentioned, and realistic for the cooking time I said I have. Together a day's worth of recipes should be able to roughly hit my "nutrition" targets
+- "recipes" must have real week-to-week variety, not just one day's worth: generate at least 5 different recipes for EACH meal moment I actually eat (Breakfast, Lunch, Dinner, Snack at minimum; add Pre-workout/Post-workout if relevant to my goal) — roughly 25–35 recipes total, so I'm not eating the exact same meals every few days. Respect any allergies, intolerances, or disliked foods I mentioned, and keep them realistic for the cooking time I said I have. Any single day's combination of recipes should be able to roughly hit my "nutrition" targets
 - Build "shoppingList" by aggregating the ingredients across all "recipes" into a few sensible categories (e.g. Protein, Carbs, Vegetables & fruit, Dairy, Pantry & other) so I can shop from one list
 
 Start the interview now.`;
@@ -157,6 +161,7 @@ function validateConfig(data: unknown): string | null {
   if (typeof n.protein !== "number") return "nutrition.protein must be a number";
   if (d.recipes !== undefined && !Array.isArray(d.recipes)) return "recipes must be an array";
   if (d.shoppingList !== undefined && !Array.isArray(d.shoppingList)) return "shoppingList must be an array";
+  if (d.sex !== undefined && !["male", "female", "other"].includes(d.sex as string)) return 'sex must be "male", "female" or "other"';
   return null;
 }
 
