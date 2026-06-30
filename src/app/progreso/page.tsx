@@ -334,7 +334,7 @@ export default function Progreso() {
   );
 }
 
-// ─── Editable workout row ──────────────────────────────────────────────────
+// ─── Editable workout row ─────────────────────────────────────────────────────────────
 
 function WorkoutRow({
   w,
@@ -369,7 +369,7 @@ function WorkoutRow({
         <div>
           <div className="font-medium">{t(w.sessionName)}</div>
           <div className="text-xs text-muted">
-            {fmtDate(w.date)} · RPE {w.rpe ?? "—"} · {t("lumbar")} {w.lowerBack ?? "—"}/5
+            {fmtDate(w.date)} · RPE {w.rpe ?? "—"} · {t("sensación")} {w.soreness ?? "—"}/5
           </div>
         </div>
         <div className="flex shrink-0 gap-1.5">
@@ -430,10 +430,10 @@ function WorkoutRow({
           />
         </label>
         <label className="block">
-          <span className="text-[11px] text-muted">{t("Lumbar (1-5)")}</span>
+          <span className="text-[11px] text-muted">{t("Sensación (1-5)")}</span>
           <input
-            type="number" min={1} max={5} value={draft.lowerBack ?? ""}
-            onChange={(e) => setDraft((d) => ({ ...d, lowerBack: e.target.value === "" ? null : Number(e.target.value) }))}
+            type="number" min={1} max={5} value={draft.soreness ?? ""}
+            onChange={(e) => setDraft((d) => ({ ...d, soreness: e.target.value === "" ? null : Number(e.target.value) }))}
             className="input mt-0.5 text-center tabular-nums"
           />
         </label>
@@ -446,7 +446,7 @@ function WorkoutRow({
       />
 
       <button
-        onClick={() => { onSave({ exercises: draft.exercises, rpe: draft.rpe, lowerBack: draft.lowerBack, notes: draft.notes }); setEditing(false); }}
+        onClick={() => { onSave({ exercises: draft.exercises, rpe: draft.rpe, soreness: draft.soreness, notes: draft.notes }); setEditing(false); }}
         className="btn-accent mt-3 w-full gap-1"
       >
         <Check size={16} /> {t("Guardar cambios")}
@@ -455,7 +455,7 @@ function WorkoutRow({
   );
 }
 
-// ─── Progress photos ───────────────────────────────────────────────────────────────────
+// ─── Progress photos ─────────────────────────────────────────────────────────────────
 
 function PhotosSection() {
   const t = useT();

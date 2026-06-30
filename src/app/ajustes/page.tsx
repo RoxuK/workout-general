@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Download, Upload, Trash2, Smartphone, Check, Bell, ChevronRight, FileSpreadsheet, Palette } from "lucide-react";
 import Header from "@/components/Header";
 import { useStore } from "@/lib/store";
-import { useActivePlan } from "@/lib/user-content";
+import { useActivePlan, useRecipes } from "@/lib/user-content";
 import { exportExcel } from "@/lib/export-excel";
 import { THEMES, getTheme, applyTheme, type ThemeId } from "@/lib/theme";
 import { useT } from "@/lib/i18n";
@@ -16,18 +16,20 @@ export default function Ajustes() {
   const bodyLogs = useStore((s) => s.bodyLogs);
   const nutrition = useStore((s) => s.nutrition);
   const freeMeals = useStore((s) => s.freeMeals);
+  const recipesEaten = useStore((s) => s.recipesEaten);
   const planStart = useStore((s) => s.planStart);
   const schedule = useStore((s) => s.schedule);
   const importData = useStore((s) => s.importData);
   const clearAll = useStore((s) => s.clearAll);
   const resetUser = useStore((s) => s.resetUser);
   const plan = useActivePlan();
+  const recipes = useRecipes();
   const t = useT();
   const fileRef = useRef<HTMLInputElement>(null);
   const [msg, setMsg] = useState("");
 
   function exportar() {
-    const data = { version: 5, exportedAt: new Date().toISOString(), workouts, bodyLogs, nutrition, freeMeals, planStart, schedule };
+    const data = { version: 6, exportedAt: new Date().toISOString(), workouts, bodyLogs, nutrition, freeMeals, recipesEaten, planStart, schedule };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -40,7 +42,7 @@ export default function Ajustes() {
 
   async function exportarExcel() {
     try {
-      await exportExcel({ plan, planStart, workouts, bodyLogs, nutrition, freeMeals });
+      await exportExcel({ plan, planStart, workouts, bodyLogs, nutrition, freeMeals, recipes, recipesEaten });
       flash("Excel descargado");
     } catch {
       flash("No se pudo generar el Excel");
@@ -59,6 +61,7 @@ export default function Ajustes() {
           bodyLogs: data.bodyLogs,
           nutrition: data.nutrition,
           freeMeals: data.freeMeals,
+          recipesEaten: data.recipesEaten,
           planStart: data.planStart,
           schedule: data.schedule,
         });
