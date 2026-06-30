@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Inter } from "next/font/google";
 import "./globals.css";
+import AppGate from "@/components/AppGate";
 import BottomNav from "@/components/BottomNav";
 import RegisterSW from "@/components/RegisterSW";
 import ReminderScheduler from "@/components/ReminderScheduler";
@@ -50,6 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ReminderScheduler />
         <main className="mx-auto min-h-dvh w-full max-w-app px-4 pb-28">{children}</main>
         <BottomNav />
+        <AppGate />
       </body>
     </html>
   );

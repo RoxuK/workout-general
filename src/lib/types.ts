@@ -121,6 +121,19 @@ export type Reminder = {
 };
 
 // Comida fuera del recetario apuntada a mano (catálogo, raciones de mano o genérica)
+export type NutritionTargets = {
+  kcal: number;
+  proteina: number;
+  carbos: number;
+  grasas: number;
+  nota?: string;
+};
+
+export type UserConfig = {
+  plan: Plan;
+  nutrition: NutritionTargets;
+};
+
 export type ComidaLibre = {
   id: string;
   nombre: string;

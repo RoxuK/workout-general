@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { WorkoutLog, BodyLog, NutricionLog, Reminder, ComidaLibre } from "./types";
+import type { WorkoutLog, BodyLog, NutricionLog, Reminder, ComidaLibre, UserConfig } from "./types";
 import { dayKey } from "./utils";
 
 export const DEFAULT_REMINDERS: Reminder[] = [
@@ -59,14 +59,22 @@ type State = {
 
   importData: (data: Partial<Pick<State, "workouts" | "bodyLogs" | "nutricion" | "comidasDia" | "comidasLibres" | "suplementosDia" | "planStart" | "agenda">>) => void;
   clearAll: () => void;
+
+  userName: string | null;
+  userConfig: UserConfig | null;
+  setUserName: (name: string) => void;
+  setUserConfig: (config: UserConfig) => void;
+  resetUser: () => void;
 };
 
 const empty = { workouts: [], bodyLogs: [], nutricion: {}, comidasDia: {}, comidasLibres: {}, suplementosDia: {}, planStart: null, agenda: {} };
+const emptyUser = { userName: null, userConfig: null };
 
 export const useStore = create<State>()(
   persist(
     (set, get) => ({
       ...empty,
+      ...emptyUser,
       lang: "es",
       setLang: (l) => set({ lang: l }),
       reminders: DEFAULT_REMINDERS,
@@ -155,6 +163,10 @@ export const useStore = create<State>()(
           agenda: data.agenda ?? s.agenda,
         })),
       clearAll: () => set({ ...empty }),
+
+      setUserName: (name) => set({ userName: name }),
+      setUserConfig: (config) => set({ userConfig: config }),
+      resetUser: () => set({ ...empty, ...emptyUser }),
     }),
     {
       name: "roxu-fit-v1",
