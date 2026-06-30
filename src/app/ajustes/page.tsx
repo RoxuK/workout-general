@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Download, Upload, Trash2, Smartphone, Check, Bell, ChevronRight, FileSpreadsheet, Palette } from "lucide-react";
 import Header from "@/components/Header";
 import { useStore } from "@/lib/store";
-import { RECETAS } from "@/lib/content";
 import { useActivePlan } from "@/lib/user-content";
 import { exportExcel } from "@/lib/export-excel";
 import { THEMES, getTheme, applyTheme, type ThemeId } from "@/lib/theme";
@@ -15,12 +14,10 @@ import { Languages } from "lucide-react";
 export default function Ajustes() {
   const workouts = useStore((s) => s.workouts);
   const bodyLogs = useStore((s) => s.bodyLogs);
-  const nutricion = useStore((s) => s.nutricion);
-  const comidasDia = useStore((s) => s.comidasDia);
-  const comidasLibres = useStore((s) => s.comidasLibres);
-  const suplementosDia = useStore((s) => s.suplementosDia);
+  const nutrition = useStore((s) => s.nutrition);
+  const freeMeals = useStore((s) => s.freeMeals);
   const planStart = useStore((s) => s.planStart);
-  const agenda = useStore((s) => s.agenda);
+  const schedule = useStore((s) => s.schedule);
   const importData = useStore((s) => s.importData);
   const clearAll = useStore((s) => s.clearAll);
   const resetUser = useStore((s) => s.resetUser);
@@ -30,12 +27,12 @@ export default function Ajustes() {
   const [msg, setMsg] = useState("");
 
   function exportar() {
-    const data = { version: 4, exportado: new Date().toISOString(), workouts, bodyLogs, nutricion, comidasDia, comidasLibres, suplementosDia, planStart, agenda };
+    const data = { version: 5, exportedAt: new Date().toISOString(), workouts, bodyLogs, nutrition, freeMeals, planStart, schedule };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `roxu-fit-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `fitplan-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
     flash("Backup descargado");
@@ -43,18 +40,8 @@ export default function Ajustes() {
 
   async function exportarExcel() {
     try {
-      await exportExcel({
-        plan,
-        planStart,
-        workouts,
-        bodyLogs,
-        nutricion,
-        comidasDia,
-        comidasLibres,
-        suplementosDia,
-        recetas: RECETAS.recetas as any[],
-      });
-      flash("Excel para el entrenador descargado");
+      await exportExcel({ plan, planStart, workouts, bodyLogs, nutrition, freeMeals });
+      flash("Excel descargado");
     } catch {
       flash("No se pudo generar el Excel");
     }
@@ -70,12 +57,10 @@ export default function Ajustes() {
         importData({
           workouts: data.workouts,
           bodyLogs: data.bodyLogs,
-          nutricion: data.nutricion,
-          comidasDia: data.comidasDia,
-          comidasLibres: data.comidasLibres,
-          suplementosDia: data.suplementosDia,
+          nutrition: data.nutrition,
+          freeMeals: data.freeMeals,
           planStart: data.planStart,
-          agenda: data.agenda,
+          schedule: data.schedule,
         });
         flash("Datos importados");
       } catch {
@@ -117,18 +102,17 @@ export default function Ajustes() {
       <div className="card">
         <div className="label mb-1">{t("Tus datos")}</div>
         <p className="text-sm text-muted">
-          {workouts.length} {t("entrenos")} · {bodyLogs.length} {t("pesajes")} · {Object.keys(nutricion).length} {t("días de nutrición.")}{" "}
+          {workouts.length} {t("entrenos")} · {bodyLogs.length} {t("pesajes")} · {Object.keys(nutrition).length} {t("días de nutrición.")}{" "}
           {t("Todo se guarda en este teléfono.")}
         </p>
       </div>
 
-      {/* Export para el entrenador */}
       <div className="mt-4 card border-accent/30">
         <div className="mb-1 flex items-center gap-2 font-medium text-accent">
-          <FileSpreadsheet size={18} /> {t("Exportar para el entrenador")}
+          <FileSpreadsheet size={18} /> {t("Exportar")}
         </div>
         <p className="mb-3 text-xs text-muted">
-          {t("Genera un Excel con el mismo formato que tu hoja de seguimiento (Pesajes, Entrenos, Nutrición). Descárgalo y tráelo al chat para revisar el plan.")}
+          {t("Genera un Excel con tus pesajes, entrenos y nutrición.")}
         </p>
         <button onClick={exportarExcel} className="btn-accent w-full justify-center gap-2">
           <FileSpreadsheet size={18} /> {t("Descargar Excel (.xlsx)")}
@@ -177,7 +161,7 @@ export default function Ajustes() {
         </ol>
       </div>
 
-      <p className="mt-6 text-center text-[11px] text-muted">Roxu · Entreno — v0.1</p>
+      <p className="mt-6 text-center text-[11px] text-muted">FitPlan — v0.1</p>
     </div>
   );
 }
@@ -219,7 +203,7 @@ function ThemePicker() {
                 <span className="h-4 w-4 rounded-full" style={{ background: th.swatch[1] }} />
               </span>
               <span className="min-w-0">
-                <span className="block text-sm leading-tight">{tr(th.nombre)}</span>
+                <span className="block text-sm leading-tight">{tr(th.name)}</span>
                 <span className="block text-[10px] leading-tight text-muted">{tr(th.desc)}</span>
               </span>
             </button>
@@ -235,8 +219,8 @@ function LangPicker() {
   const lang = useStore((s) => s.lang);
   const setLang = useStore((s) => s.setLang);
   const opts: { id: "es" | "en"; label: string }[] = [
+    { id: "en", label: "English" },
     { id: "es", label: "Español" },
-    { id: "en", label: "Inglés" },
   ];
   return (
     <div className="mb-4 card">
@@ -252,7 +236,7 @@ function LangPicker() {
               lang === o.id ? "border-accent bg-accent-soft text-accent" : "border-line bg-surface-2 text-muted"
             }`}
           >
-            {tr(o.label)}
+            {o.label}
           </button>
         ))}
       </div>
