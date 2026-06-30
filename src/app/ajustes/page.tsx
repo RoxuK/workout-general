@@ -19,6 +19,7 @@ export default function Ajustes() {
   const recipesEaten = useStore((s) => s.recipesEaten);
   const planStart = useStore((s) => s.planStart);
   const schedule = useStore((s) => s.schedule);
+  const cycles = useStore((s) => s.cycles);
   const importData = useStore((s) => s.importData);
   const clearAll = useStore((s) => s.clearAll);
   const resetUser = useStore((s) => s.resetUser);
@@ -29,7 +30,7 @@ export default function Ajustes() {
   const [msg, setMsg] = useState("");
 
   function exportar() {
-    const data = { version: 6, exportedAt: new Date().toISOString(), workouts, bodyLogs, nutrition, freeMeals, recipesEaten, planStart, schedule };
+    const data = { version: 7, exportedAt: new Date().toISOString(), workouts, bodyLogs, nutrition, freeMeals, recipesEaten, planStart, schedule, cycles };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -64,6 +65,7 @@ export default function Ajustes() {
           recipesEaten: data.recipesEaten,
           planStart: data.planStart,
           schedule: data.schedule,
+          cycles: data.cycles,
         });
         flash("Datos importados");
       } catch {

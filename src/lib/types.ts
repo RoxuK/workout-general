@@ -124,11 +124,24 @@ export type ShoppingCategory = {
   items: string[];
 };
 
+export type Sex = "male" | "female" | "other";
+export type Goal = "lose-fat" | "build-muscle" | "recomposition" | "general-fitness" | "athletic-performance";
+
 export type UserConfig = {
+  sex?: Sex;
+  goal?: Goal;
   plan: Plan;
   nutrition: NutritionTargets;
   recipes: Recipe[];
   shoppingList: ShoppingCategory[];
+};
+
+export type CycleLog = {
+  id: string;
+  start: string; // YYYY-MM-DD, first day of period
+  flow: "light" | "medium" | "heavy" | "";
+  symptoms: string[];
+  notes: string;
 };
 
 // Meal logged outside the recipe book (catalog, hand-portion estimate, or generic)

@@ -147,10 +147,14 @@ export function computeAchievements(data: Data, plan: Plan, planStart?: string |
   const soreness5 = workouts.filter((w) => (w.soreness ?? 0) >= 5).length;
 
   // --- Weight and composition (base = first real weigh-in, not the plan's number) ---
+  // Direction comes from the plan's own numbers (target vs. start), not a hardcoded
+  // assumption of weight loss — a muscle-building plan often targets a HIGHER weight.
   const baseWeight = effectiveStartingWeight(plan, bodyLogs, planStart);
   const currentWeight = latestWeight(bodyLogs) ?? baseWeight;
-  const lost = Math.max(0, baseWeight - currentWeight);
-  const targetKg = Math.max(1, baseWeight - plan.targetWeight);
+  const gaining = plan.targetWeight >= baseWeight;
+  const moved = gaining ? currentWeight - baseWeight : baseWeight - currentWeight;
+  const lost = Math.max(0, moved);
+  const targetKg = Math.max(1, Math.abs(plan.targetWeight - baseWeight));
 
   const first = <K extends keyof BodyLog>(key: K) => [...bodyLogs].reverse().find((b) => b[key] !== "");
   const latest = <K extends keyof BodyLog>(key: K) => bodyLogs.find((b) => b[key] !== "");
@@ -219,13 +223,17 @@ export function computeAchievements(data: Data, plan: Plan, planStart?: string |
     make("Recuperación", "sin-molestias-15", "🧘", "Sin molestias", "15 sesiones con sensación 4+/5", soreness4, 15),
 
     // ====== Cuerpo (peso y medidas) ======
+    // Direction-aware: a muscle-gain plan targets a HIGHER weight, so "losing"
+    // achievements would never make sense (and waist/fat-loss ones are dropped).
     make("Cuerpo", "primer-pesaje", "📏", "Toma de contacto", "Registra tu primer pesaje", bodyLogs.length, 1),
     make("Cuerpo", "seguimiento-8", "📊", "Seguimiento fiel", "8 pesajes registrados", bodyLogs.length, 8),
-    make("Cuerpo", "primer-kilo", "⚖️", "Primer kilo", "Pierde tu primer kilo", lost, 1),
-    make("Cuerpo", "mitad-camino", "🚀", "A mitad de camino", `Pierde ${(targetKg / 2).toFixed(0)} kg`, lost, targetKg / 2),
-    make("Cuerpo", "meta-peso", "🏆", `Meta ${plan.targetWeight} kg`, "Alcanza tu peso objetivo", lost, targetKg, currentWeight <= plan.targetWeight),
-    make("Cuerpo", "cintura-menos", "📐", "Menos cintura", "Reduce 3 cm de cintura", waistDown, 3),
-    make("Cuerpo", "grasa-abajo", "🔥", "Quema grasa", "Baja un 2% de grasa corporal", fatDown, 2),
+    make("Cuerpo", "primer-kilo", "⚖️", "Primer kilo", gaining ? "Gana tu primer kilo" : "Pierde tu primer kilo", lost, 1),
+    make("Cuerpo", "mitad-camino", "🚀", "A mitad de camino", `${gaining ? "Gana" : "Pierde"} ${(targetKg / 2).toFixed(0)} kg`, lost, targetKg / 2),
+    make("Cuerpo", "meta-peso", "🏆", `Meta ${plan.targetWeight} kg`, "Alcanza tu peso objetivo", lost, targetKg, gaining ? currentWeight >= plan.targetWeight : currentWeight <= plan.targetWeight),
+    ...(!gaining ? [
+      make("Cuerpo", "cintura-menos", "📐", "Menos cintura", "Reduce 3 cm de cintura", waistDown, 3),
+      make("Cuerpo", "grasa-abajo", "🔥", "Quema grasa", "Baja un 2% de grasa corporal", fatDown, 2),
+    ] : []),
 
     // ====== Nutrición ======
     make("Nutrición", "disciplina", "🥗", "Disciplina", "14 días limpios de nutrición", cleanDays, 14),

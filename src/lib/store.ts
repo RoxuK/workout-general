@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { WorkoutLog, BodyLog, NutritionLog, Reminder, FreeMeal, UserConfig } from "./types";
+import type { WorkoutLog, BodyLog, NutritionLog, Reminder, FreeMeal, UserConfig, CycleLog } from "./types";
 import { dayKey } from "./utils";
 
 export const DEFAULT_REMINDERS: Reminder[] = [
@@ -23,6 +23,9 @@ type State = {
   recipesEaten: Record<string, string[]>;  // dayKey -> recipe ids marked eaten that day
   planStart: string | null;                // YYYY-MM-DD — real date the user starts the plan
   schedule: Record<string, string>;        // dayKey -> sessionId the user decides to train that day
+  cycles: CycleLog[];                      // menstrual cycle log (shown only for sex: "female")
+  cycleAvgLength: number;                  // days, observed or default estimate
+  periodLength: number;                    // days
   _hydrated: boolean;
 
   addWorkout: (w: WorkoutLog) => void;
@@ -47,13 +50,17 @@ type State = {
 
   setSchedule: (date: string, sessionId: string | null) => void;
 
+  addCycle: (c: CycleLog) => void;
+  deleteCycle: (id: string) => void;
+  setCycleSettings: (patch: Partial<Pick<State, "cycleAvgLength" | "periodLength">>) => void;
+
   lang: "es" | "en";
   setLang: (l: "es" | "en") => void;
 
   reminders: Reminder[];
   updateReminder: (id: string, patch: Partial<Reminder>) => void;
 
-  importData: (data: Partial<Pick<State, "workouts" | "bodyLogs" | "nutrition" | "freeMeals" | "recipesEaten" | "planStart" | "schedule">>) => void;
+  importData: (data: Partial<Pick<State, "workouts" | "bodyLogs" | "nutrition" | "freeMeals" | "recipesEaten" | "planStart" | "schedule" | "cycles">>) => void;
   clearAll: () => void;
 
   userName: string | null;
@@ -63,7 +70,7 @@ type State = {
   resetUser: () => void;
 };
 
-const empty = { workouts: [], bodyLogs: [], nutrition: {}, freeMeals: {}, recipesEaten: {}, planStart: null, schedule: {} };
+const empty = { workouts: [], bodyLogs: [], nutrition: {}, freeMeals: {}, recipesEaten: {}, planStart: null, schedule: {}, cycles: [] as CycleLog[] };
 const emptyUser = { userName: null, userConfig: null };
 
 export const useStore = create<State>()(
@@ -71,6 +78,8 @@ export const useStore = create<State>()(
     (set, get) => ({
       ...empty,
       ...emptyUser,
+      cycleAvgLength: 28,
+      periodLength: 5,
       lang: "en",
       setLang: (l) => set({ lang: l }),
       reminders: DEFAULT_REMINDERS,
@@ -135,6 +144,12 @@ export const useStore = create<State>()(
           reminders: s.reminders.map((r) => (r.id === id ? { ...r, ...patch } : r)),
         })),
 
+      addCycle: (c) =>
+        set((s) => ({ cycles: [c, ...s.cycles].sort((a, b) => (a.start < b.start ? 1 : -1)) })),
+      deleteCycle: (id) =>
+        set((s) => ({ cycles: s.cycles.filter((c) => c.id !== id) })),
+      setCycleSettings: (patch) => set(patch),
+
       importData: (data) =>
         set((s) => ({
           workouts: (data.workouts ?? s.workouts).slice().sort(byDateDesc),
@@ -144,6 +159,7 @@ export const useStore = create<State>()(
           recipesEaten: data.recipesEaten ?? s.recipesEaten,
           planStart: data.planStart !== undefined ? data.planStart : s.planStart,
           schedule: data.schedule ?? s.schedule,
+          cycles: data.cycles ?? s.cycles,
         })),
       clearAll: () => set({ ...empty }),
 
