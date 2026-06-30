@@ -1,14 +1,23 @@
 import type { Plan, BodyLog, NutritionTargets, Recipe, ShoppingCategory } from "./types";
 import freeMeals from "../../content/nutrition/free-meals.json";
-import exerciseImageIndex from "../../content/knowledge/exercise-images.json";
+import exerciseImages1 from "../../content/knowledge/exercise-images-1.json";
+import exerciseImages2 from "../../content/knowledge/exercise-images-2.json";
+import exerciseImages3 from "../../content/knowledge/exercise-images-3.json";
+import exerciseImages4 from "../../content/knowledge/exercise-images-4.json";
 
 export const FREE_MEALS = freeMeals;
 
 // free-exercise-db (yuhonas/free-exercise-db, public domain) trimmed to just
 // what we need to build image URLs: name, id (the CDN folder), and how many
-// numbered images that exercise has.
+// numbered images that exercise has. Split into 4 chunk files to keep each
+// file a manageable size to read/edit.
 type ExerciseImageEntry = { name: string; id: string; n: number };
-const EXERCISE_IMAGE_INDEX = exerciseImageIndex as ExerciseImageEntry[];
+const EXERCISE_IMAGE_INDEX = [
+  ...exerciseImages1,
+  ...exerciseImages2,
+  ...exerciseImages3,
+  ...exerciseImages4,
+] as ExerciseImageEntry[];
 
 function normalize(s: string): string {
   return s
