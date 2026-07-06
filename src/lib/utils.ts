@@ -34,6 +34,14 @@ export function dayName(d: Date = new Date()) {
   return DAYS[d.getDay()];
 }
 
+// Detects a plan's reps field for a held-for-time exercise (planks, holds...),
+// e.g. "30s" or "20 s/side" — returns the target seconds, or null if it's a
+// normal rep-based exercise.
+export function parseTimeSec(reps: string): number | null {
+  const m = reps.trim().match(/^(\d+)\s*s(\/\w+)?$/i);
+  return m ? parseInt(m[1], 10) : null;
+}
+
 // Best set of an exercise (highest kg, ties broken by reps)
 export function bestSet(sets: { kg: number | ""; reps: number | "" }[]) {
   let best: { kg: number; reps: number } | null = null;

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Flame,
@@ -16,11 +16,12 @@ import {
   Trophy,
   Home,
   TrendingUp,
+  Trash2,
 } from "lucide-react";
 import { useActivePlan } from "@/lib/user-content";
 import { useStore } from "@/lib/store";
 import type { ExerciseLog, SetLog, WorkoutLog, Session, Plan } from "@/lib/types";
-import { uid, todayISO, bestSet, fmtDate } from "@/lib/utils";
+import { uid, todayISO, bestSet, fmtDate, parseTimeSec, cn } from "@/lib/utils";
 import ExerciseImages from "@/components/ExerciseImages";
 import PlateCalc from "@/components/PlateCalc";
 import { useT } from "@/lib/i18n";
@@ -73,6 +74,7 @@ export default function Player() {
 
 function SessionPlayer({ session, plan }: { session: Session; plan: Plan }) {
   const t = useT();
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -189,6 +191,12 @@ function SessionPlayer({ session, plan }: { session: Session; plan: Plan }) {
     });
   }
 
+  function discard() {
+    if (!confirm(t("Discard this workout? Everything logged in this session will be lost."))) return;
+    setWorkoutDraft(null);
+    router.replace("/entreno");
+  }
+
   // Reference to the last time, by exercise name
   const lastByName = useMemo(() => {
     const m = new Map<string, ReturnType<typeof bestSet>>();
@@ -241,9 +249,14 @@ function SessionPlayer({ session, plan }: { session: Session; plan: Plan }) {
         <Link href="/entreno" className="inline-flex items-center gap-1 text-xs text-muted">
           <ChevronLeft size={16} /> {t("Sesiones")}
         </Link>
-        {last && (
-          <span className="chip">{t("Última:")} {fmtDate(last.date)}</span>
-        )}
+        <div className="flex items-center gap-3">
+          {last && (
+            <span className="chip">{t("Última:")} {fmtDate(last.date)}</span>
+          )}
+          <button onClick={discard} className="inline-flex items-center gap-1 text-xs text-bad">
+            <Trash2 size={14} /> {t("Discard")}
+          </button>
+        </div>
       </header>
 
       <h1 className="mt-2 font-display text-3xl">{t(session.name)}</h1>
@@ -271,11 +284,17 @@ function SessionPlayer({ session, plan }: { session: Session; plan: Plan }) {
               const prev = lastByName.get(ej.name);
               const pr = prMap.get(ej.name);
               const sug = suggestions.get(ej.name);
+              const timedSecs = parseTimeSec(ej.reps);
+              const exSets = logs[ei]?.sets ?? [];
+              const allDone = exSets.length > 0 && exSets.every((s) => s.reps !== "");
               return (
-                <div key={ei} className="card">
+                <div key={ei} className={cn("card", allDone && "border-good/50")}>
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="font-medium leading-snug">{t(ej.name)}</div>
+                      <div className="flex items-center gap-1.5 font-medium leading-snug">
+                        {t(ej.name)}
+                        {allDone && <Check size={15} className="shrink-0 text-good" />}
+                      </div>
                       <div className="mt-0.5 text-xs text-muted">
                         {ej.sets} × {t(ej.reps)} · {t("descanso")} {ej.rest}
                       </div>
@@ -298,27 +317,38 @@ function SessionPlayer({ session, plan }: { session: Session; plan: Plan }) {
                     </p>
                   ) : prev ? (
                     <p className="mt-2 text-xs text-accent">
-                      {t("Última vez:")} {prev.reps} {t("reps/seg → intenta superarlo")}
+                      {t("Última vez:")} {timedSecs != null ? `${prev.reps} s` : `${prev.reps} reps/seg`} {t("→ intenta superarlo")}
                     </p>
                   ) : null}
 
                   <div className="mt-3 space-y-2">
-                    {logs[ei]?.sets.map((s, si) => (
-                      <div key={si} className="flex items-center gap-2">
-                        <span className="w-6 text-center text-xs text-muted">{si + 1}</span>
-                        <NumInput
-                          placeholder="kg"
-                          value={s.kg}
-                          onChange={(v) => updateSet(ei, si, "kg", v)}
-                        />
-                        <span className="text-muted">×</span>
-                        <NumInput
-                          placeholder="reps"
-                          value={s.reps}
-                          onChange={(v) => updateSet(ei, si, "reps", v)}
-                        />
-                      </div>
-                    ))}
+                    {exSets.map((s, si) =>
+                      timedSecs != null ? (
+                        <div key={si} className="flex items-center gap-2">
+                          <span className="w-6 text-center text-xs text-muted">{si + 1}</span>
+                          <TimedSetPill
+                            targetSecs={timedSecs}
+                            value={s.reps}
+                            onChange={(v) => updateSet(ei, si, "reps", v)}
+                          />
+                        </div>
+                      ) : (
+                        <div key={si} className="flex items-center gap-2">
+                          <span className="w-6 text-center text-xs text-muted">{si + 1}</span>
+                          <NumInput
+                            placeholder="kg"
+                            value={s.kg}
+                            onChange={(v) => updateSet(ei, si, "kg", v)}
+                          />
+                          <span className="text-muted">×</span>
+                          <NumInput
+                            placeholder="reps"
+                            value={s.reps}
+                            onChange={(v) => updateSet(ei, si, "reps", v)}
+                          />
+                        </div>
+                      )
+                    )}
                   </div>
                 </div>
               );
@@ -784,6 +814,73 @@ function NumInput({
       onChange={(e) => onChange(e.target.value)}
       className="w-full rounded-xl border border-line bg-surface-2 py-2.5 text-center text-lg tabular-nums outline-none focus:border-accent"
     />
+  );
+}
+
+// Full-width pill for held-for-time sets (plank, hollow body hold...) — no kg
+// field, since an isometric hold doesn't have one. Same real-clock deadline
+// pattern as RestTimer, so it doesn't drift if the tab is backgrounded.
+function TimedSetPill({
+  targetSecs,
+  value,
+  onChange,
+}: {
+  targetSecs: number;
+  value: number | "";
+  onChange: (v: string) => void;
+}) {
+  const [running, setRunning] = useState(false);
+  const [left, setLeft] = useState(targetSecs);
+  const endAtRef = useRef<number | null>(null);
+  const done = value !== "";
+
+  useEffect(() => {
+    if (!running) return;
+    const tick = () => {
+      if (endAtRef.current == null) return;
+      const remaining = Math.max(0, Math.round((endAtRef.current - Date.now()) / 1000));
+      setLeft(remaining);
+      if (remaining <= 0) {
+        setRunning(false);
+        restAlarm();
+        onChange(String(targetSecs));
+      }
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  }, [running]); // eslint-disable-line
+
+  function tap() {
+    if (done) {
+      // Already completed — tapping again resets it, in case the set needs a redo.
+      onChange("");
+      setLeft(targetSecs);
+      return;
+    }
+    if (running) return;
+    endAtRef.current = Date.now() + targetSecs * 1000;
+    setLeft(targetSecs);
+    setRunning(true);
+  }
+
+  return (
+    <button
+      onClick={tap}
+      className={`w-full rounded-xl border py-2.5 text-center text-lg tabular-nums transition ${
+        done
+          ? "border-good/60 bg-good/10 text-good"
+          : running
+          ? "border-accent bg-accent-soft text-accent"
+          : "border-line bg-surface-2 text-ink"
+      }`}
+    >
+      {done ? `✓ ${value} s` : running ? `${left}s` : `▷ ${targetSecs}s`}
+    </button>
   );
 }
 

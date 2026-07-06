@@ -2,28 +2,17 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { ChevronRight, Dumbbell, CheckCircle2, Plane } from "lucide-react";
 import Header from "@/components/Header";
 import { useActivePlan } from "@/lib/user-content";
 import { useStore } from "@/lib/store";
 import { dayName, fmtDate } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
-import { shouldAutoResume } from "@/lib/resume-guard";
+import ResumeBanner from "@/components/ResumeBanner";
 
 export default function EntrenoList() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  const router = useRouter();
-
-  // If this list is what the phone restored instead of the exact session
-  // being logged, jump straight back into it rather than making the user
-  // find it in the list again.
-  useEffect(() => {
-    if (!mounted || !shouldAutoResume()) return;
-    const draft = useStore.getState().workoutDraft;
-    if (draft) router.replace(`/entreno/${draft.sessionId}`);
-  }, [mounted]); // eslint-disable-line
 
   const plan = useActivePlan();
   const t = useT();
@@ -34,6 +23,8 @@ export default function EntrenoList() {
   return (
     <div className="animate-fade-up">
       <Header eyebrow="Elige tu sesión" title="Entreno" />
+
+      <ResumeBanner mounted={mounted} />
 
       <div className="space-y-3">
         {plan.sessions.filter((s) => !s.travel).map((s) => {

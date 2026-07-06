@@ -1,5 +1,6 @@
 import type { WorkoutLog, BodyLog, NutritionLog, Plan, FreeMeal, Recipe } from "./types";
 import { planWeek, effectiveStartingWeight, latestWeight } from "./content";
+import { parseTimeSec } from "./utils";
 
 function fmt(d: string) {
   const dt = new Date(d);
@@ -8,9 +9,10 @@ function fmt(d: string) {
   return `${dd}/${mm}/${dt.getFullYear()}`;
 }
 
-function setStr(s?: { kg: number | ""; reps: number | "" }) {
+function setStr(s?: { kg: number | ""; reps: number | "" }, timed?: boolean) {
   if (!s) return "";
   if (s.kg === "" && s.reps === "") return "";
+  if (timed) return s.reps === "" ? "" : `${s.reps} s`;
   const kg = s.kg === "" ? "" : s.kg;
   const reps = s.reps === "" ? "" : s.reps;
   return `${kg} x ${reps}`;
@@ -90,15 +92,25 @@ export async function exportExcel(opts: ExportOpts) {
     "Date", "Session", "Exercise", "Set 1 (kg x reps)", "Set 2 (kg x reps)",
     "Set 3 (kg x reps)", "Set 4 (kg x reps)", "RPE (1-10)", "Soreness (1-5)", "Notes",
   ];
+  // Exercise names held for time (planks, hollow body hold...) — logged in
+  // seconds, so "kg x reps" doesn't mean anything for these rows.
+  const timedExercises = new Set<string>();
+  for (const sess of plan.sessions) {
+    for (const ex of sess.exercises) {
+      if (parseTimeSec(ex.reps) != null) timedExercises.add(ex.name);
+    }
+  }
+
   const wk = [...workouts].sort((a, b) => (a.date < b.date ? -1 : 1));
   const workoutRows: any[][] = [];
   for (const w of wk) {
     w.exercises.forEach((e, idx) => {
+      const timed = timedExercises.has(e.name);
       workoutRows.push([
         idx === 0 ? fmt(w.date) : "",
         idx === 0 ? w.sessionName : "",
         e.name,
-        setStr(e.sets[0]), setStr(e.sets[1]), setStr(e.sets[2]), setStr(e.sets[3]),
+        setStr(e.sets[0], timed), setStr(e.sets[1], timed), setStr(e.sets[2], timed), setStr(e.sets[3], timed),
         idx === 0 ? (w.rpe ?? "") : "",
         idx === 0 ? (w.soreness ?? "") : "",
         idx === 0 ? w.notes : "",

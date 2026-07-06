@@ -7,7 +7,7 @@ import { effectiveStartingWeight, latestWeight } from "@/lib/content";
 import { useActivePlan, useRecipes } from "@/lib/user-content";
 import { useT } from "@/lib/i18n";
 import { useStore } from "@/lib/store";
-import { bestSet, fmtDate } from "@/lib/utils";
+import { bestSet, fmtDate, parseTimeSec } from "@/lib/utils";
 import { exportExcel } from "@/lib/export-excel";
 
 export default function Reportes() {
@@ -50,6 +50,16 @@ export default function Reportes() {
       ? (rpeVals.reduce((a, b) => a + b, 0) / rpeVals.length).toFixed(1)
       : "—";
 
+    // Exercise names held for time (planks, hollow body hold...), detected from
+    // the active plan's reps field — these get compared/ranked by seconds
+    // held instead of kg, and "0 kg x reps" doesn't mean anything for them.
+    const timedExercises = new Set<string>();
+    for (const sess of plan.sessions) {
+      for (const ex of sess.exercises) {
+        if (parseTimeSec(ex.reps) != null) timedExercises.add(ex.name);
+      }
+    }
+
     // Best sets per exercise in the period
     const prMap = new Map<string, { kg: number; reps: number }>();
     for (const w of wk) {
@@ -57,7 +67,8 @@ export default function Reportes() {
         const b = bestSet(e.sets);
         if (!b) continue;
         const cur = prMap.get(e.name);
-        if (!cur || b.kg > cur.kg) prMap.set(e.name, b);
+        const better = !cur || (timedExercises.has(e.name) ? b.reps > cur.reps : b.kg > cur.kg);
+        if (better) prMap.set(e.name, b);
       }
     }
 
@@ -88,8 +99,14 @@ export default function Reportes() {
     if (prMap.size) {
       L.push(`## Best sets this period`);
       Array.from(prMap.entries())
-        .sort((a, b) => b[1].kg - a[1].kg)
-        .forEach(([n, b]) => L.push(`- ${n}: **${b.kg} kg × ${b.reps}**`));
+        .sort((a, b) => {
+          const av = timedExercises.has(a[0]) ? a[1].reps : a[1].kg;
+          const bv = timedExercises.has(b[0]) ? b[1].reps : b[1].kg;
+          return bv - av;
+        })
+        .forEach(([n, b]) =>
+          L.push(`- ${n}: **${timedExercises.has(n) ? `${b.reps} s` : `${b.kg} kg × ${b.reps}`}**`)
+        );
       L.push(``);
     }
     L.push(`## Nutrition`);
