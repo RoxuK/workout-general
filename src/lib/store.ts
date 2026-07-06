@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { WorkoutLog, BodyLog, NutritionLog, Reminder, FreeMeal, UserConfig, CycleLog } from "./types";
+import type { WorkoutLog, BodyLog, NutritionLog, Reminder, FreeMeal, UserConfig, CycleLog, WorkoutDraft } from "./types";
 import { dayKey } from "./utils";
 
 export const DEFAULT_REMINDERS: Reminder[] = [
@@ -23,6 +23,7 @@ type State = {
   recipesEaten: Record<string, string[]>;  // dayKey -> recipe ids marked eaten that day
   planStart: string | null;                // YYYY-MM-DD — real date the user starts the plan
   schedule: Record<string, string>;        // dayKey -> sessionId the user decides to train that day
+  workoutDraft: WorkoutDraft | null;       // in-progress workout, so it isn't lost if the tab unloads
   cycles: CycleLog[];                      // menstrual cycle log (shown only for sex: "female")
   cycleAvgLength: number;                  // days, observed or default estimate
   periodLength: number;                    // days
@@ -50,6 +51,8 @@ type State = {
 
   setSchedule: (date: string, sessionId: string | null) => void;
 
+  setWorkoutDraft: (d: WorkoutDraft | null) => void;
+
   addCycle: (c: CycleLog) => void;
   deleteCycle: (id: string) => void;
   setCycleSettings: (patch: Partial<Pick<State, "cycleAvgLength" | "periodLength">>) => void;
@@ -71,7 +74,7 @@ type State = {
   resetUser: () => void;
 };
 
-const empty = { workouts: [], bodyLogs: [], nutrition: {}, freeMeals: {}, recipesEaten: {}, planStart: null, schedule: {}, cycles: [] as CycleLog[] };
+const empty = { workouts: [], bodyLogs: [], nutrition: {}, freeMeals: {}, recipesEaten: {}, planStart: null, schedule: {}, workoutDraft: null as WorkoutDraft | null, cycles: [] as CycleLog[] };
 const emptyUser = { userName: null, userConfig: null };
 
 export const useStore = create<State>()(
@@ -139,6 +142,8 @@ export const useStore = create<State>()(
           else next[date] = sessionId;
           return { schedule: next };
         }),
+
+      setWorkoutDraft: (d) => set({ workoutDraft: d }),
 
       updateReminder: (id, patch) =>
         set((s) => ({

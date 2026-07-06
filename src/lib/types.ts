@@ -70,6 +70,19 @@ export type WorkoutLog = {
   notes: string;
 };
 
+// In-progress workout, persisted so it survives the phone unloading the tab
+// in the background (switching app, low memory, long scroll away...)
+export type WorkoutDraft = {
+  sessionId: string;
+  phase: "warmup" | "work";
+  warm: boolean[];
+  logs: ExerciseLog[];
+  rpe: number;
+  soreness: number;
+  notes: string;
+  startedAt: number | null; // Date.now() once the warmup is done
+};
+
 export type BodyLog = {
   id: string;
   date: string;

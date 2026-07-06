@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Settings, FileText, ArrowRight, Activity, Flame, Scale, ShieldCheck } from "lucide-react";
 import { effectiveStartingWeight, latestWeight } from "@/lib/content";
 import { useActivePlan, useNutritionTargets, useUserName } from "@/lib/user-content";
 import { useStore } from "@/lib/store";
 import { dayName, dayKey } from "@/lib/utils";
 import { useT, useLang } from "@/lib/i18n";
+import { shouldAutoResume } from "@/lib/resume-guard";
 import Ring from "@/components/Ring";
 import TrainingCalendar from "@/components/TrainingCalendar";
 import Trophies from "@/components/Trophies";
@@ -16,6 +18,16 @@ import WeeklySummary from "@/components/WeeklySummary";
 export default function Dashboard() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+  const router = useRouter();
+
+  // If the app reopens with a workout in progress (the phone unloaded the
+  // tab mid-set), jump straight back to that session instead of leaving the
+  // user on the dashboard.
+  useEffect(() => {
+    if (!mounted || !shouldAutoResume()) return;
+    const draft = useStore.getState().workoutDraft;
+    if (draft) router.replace(`/entreno/${draft.sessionId}`);
+  }, [mounted]); // eslint-disable-line
 
   const plan = useActivePlan();
   const nutrition = useNutritionTargets();

@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { useActivePlan } from "@/lib/user-content";
 import { useStore } from "@/lib/store";
-import type { ExerciseLog, SetLog, WorkoutLog } from "@/lib/types";
+import type { ExerciseLog, SetLog, WorkoutLog, Session, Plan } from "@/lib/types";
 import { uid, todayISO, bestSet, fmtDate } from "@/lib/utils";
 import ExerciseImages from "@/components/ExerciseImages";
 import PlateCalc from "@/components/PlateCalc";
@@ -56,44 +56,6 @@ export default function Player() {
   const t = useT();
   const session = plan.sessions.find((s) => s.id === params.sesion);
 
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-
-  const lastWorkoutFor = useStore((s) => s.lastWorkoutFor);
-  const addWorkout = useStore((s) => s.addWorkout);
-  const workouts = useStore((s) => s.workouts);
-  const last = mounted && session ? lastWorkoutFor(session.id) : undefined;
-
-  // Session warmup (travel sessions bring their own, no stationary bike)
-  const warmup = session?.warmup ?? plan.warmup;
-
-  const [phase, setPhase] = useState<"warmup" | "work">("warmup");
-  const [warm, setWarm] = useState<boolean[]>(() =>
-    warmup.steps.map(() => false)
-  );
-  const [logs, setLogs] = useState<ExerciseLog[]>([]);
-  const [rpe, setRpe] = useState(7);
-  const [soreness, setSoreness] = useState(4);
-  const [notes, setNotes] = useState("");
-  const [saved, setSaved] = useState(false);
-  const [done, setDone] = useState<Summary | null>(null);
-  const [restReq, setRestReq] = useState<{ secs: number; n: number } | null>(null);
-  const startRef = useRef<number | null>(null);
-
-  // Screen stays on while training (not during warmup or once finished)
-  useWakeLock(phase === "work" && !done);
-
-  useEffect(() => {
-    if (session) {
-      setLogs(
-        session.exercises.map((e) => ({
-          name: e.name,
-          sets: Array.from({ length: e.sets }, () => ({ kg: "", reps: "" } as SetLog)),
-        }))
-      );
-    }
-  }, [session?.id]); // eslint-disable-line
-
   if (!session) {
     return (
       <div className="pt-10 text-center">
@@ -103,12 +65,84 @@ export default function Player() {
     );
   }
 
+  // key={session.id}: forces a fresh mount per session, so state (incl.
+  // restoring an in-progress draft) always starts clean, without briefly
+  // carrying over data from a previously open session.
+  return <SessionPlayer key={session.id} session={session} plan={plan} />;
+}
+
+function SessionPlayer({ session, plan }: { session: Session; plan: Plan }) {
+  const t = useT();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const lastWorkoutFor = useStore((s) => s.lastWorkoutFor);
+  const addWorkout = useStore((s) => s.addWorkout);
+  const workouts = useStore((s) => s.workouts);
+  const setWorkoutDraft = useStore((s) => s.setWorkoutDraft);
+  const last = mounted ? lastWorkoutFor(session.id) : undefined;
+
+  // Session warmup (travel sessions bring their own, no stationary bike)
+  const warmup = session.warmup ?? plan.warmup;
+
+  // Initial state always starts blank: identical on server and on the
+  // client's first render (the draft only lives in localStorage, invisible
+  // during server rendering). Restoring it directly here broke hydration.
+  // It gets restored afterwards, in an effect (see below).
+  const [phase, setPhase] = useState<"warmup" | "work">("warmup");
+  const [warm, setWarm] = useState<boolean[]>(() => warmup.steps.map(() => false));
+  const [logs, setLogs] = useState<ExerciseLog[]>(() =>
+    session.exercises.map((e) => ({
+      name: e.name,
+      sets: Array.from({ length: e.sets }, () => ({ kg: "", reps: "" } as SetLog)),
+    }))
+  );
+  const [rpe, setRpe] = useState(7);
+  const [soreness, setSoreness] = useState(4);
+  const [notes, setNotes] = useState("");
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [done, setDone] = useState<Summary | null>(null);
+  const [restReq, setRestReq] = useState<{ secs: number; n: number } | null>(null);
+  const [hydratedFromDraft, setHydratedFromDraft] = useState(false);
+
+  // Screen stays on while training (not during warmup or once finished)
+  useWakeLock(phase === "work" && !done);
+
+  // Restore an in-progress workout for this same session (if the phone
+  // unloaded the tab in the background, we pick up right where we left off).
+  // Client-only, after mount: key={session.id} on the parent already
+  // guarantees a fresh mount per session, so this runs once.
+  useEffect(() => {
+    const draft = useStore.getState().workoutDraft;
+    if (draft && draft.sessionId === session.id) {
+      setPhase(draft.phase);
+      setWarm(draft.warm);
+      setLogs(draft.logs);
+      setRpe(draft.rpe);
+      setSoreness(draft.soreness);
+      setNotes(draft.notes);
+      setStartedAt(draft.startedAt);
+    }
+    setHydratedFromDraft(true);
+  }, []); // eslint-disable-line
+
+  // Save the in-progress workout on every change: before, this only lived in
+  // React memory, so if the phone unloaded the tab in the background
+  // (switching app, low memory) every logged set was lost. Waits for the
+  // restore above to finish, so it doesn't overwrite a valid draft with the
+  // blank values from the first render.
+  useEffect(() => {
+    if (!hydratedFromDraft || saved) return;
+    setWorkoutDraft({ sessionId: session.id, phase, warm, logs, rpe, soreness, notes, startedAt });
+  }, [hydratedFromDraft, session.id, phase, warm, logs, rpe, soreness, notes, startedAt, saved, setWorkoutDraft]);
+
   const allWarm = warm.every(Boolean);
 
   function updateSet(ei: number, si: number, field: keyof SetLog, value: string) {
     // Starting the rest timer for the exercise the moment reps are logged
     if (field === "reps" && value !== "" && logs[ei]?.sets[si]?.reps === "") {
-      const d = parseInt(session!.exercises[ei]?.rest ?? "", 10);
+      const d = parseInt(session.exercises[ei]?.rest ?? "", 10);
       if (d > 0) setRestReq((r) => ({ secs: d, n: (r?.n ?? 0) + 1 }));
     }
     setLogs((prev) => {
@@ -123,8 +157,8 @@ export default function Player() {
     const w: WorkoutLog = {
       id: uid(),
       date: todayISO(),
-      sessionId: session!.id,
-      sessionName: session!.name,
+      sessionId: session.id,
+      sessionName: session.name,
       exercises: logs,
       rpe,
       soreness,
@@ -145,9 +179,10 @@ export default function Player() {
     }
 
     addWorkout(w);
+    setWorkoutDraft(null);
     setSaved(true);
     setDone({
-      durationMin: startRef.current ? Math.round((Date.now() - startRef.current) / 60000) : null,
+      durationMin: startedAt ? Math.round((Date.now() - startedAt) / 60000) : null,
       volume,
       previousVolume,
       newPRs,
@@ -223,7 +258,7 @@ export default function Player() {
           duration={warmup.duration}
           allWarm={allWarm}
           onStart={() => {
-            startRef.current = Date.now();
+            setStartedAt(Date.now());
             setPhase("work");
           }}
         />
@@ -351,7 +386,7 @@ export default function Player() {
   );
 }
 
-// ─── Session close ────────────────────────────────────────────────────────────────────────
+// ─── Session close ───────────────────────────────────────────────────────────
 
 type Summary = {
   durationMin: number | null;
@@ -579,25 +614,30 @@ function Warmup({
       </div>
       <div className="space-y-2">
         {steps.map((p, i) => (
-          <button
+          <div
             key={i}
-            onClick={() => setWarm((prev) => prev.map((b, j) => (j === i ? !b : b)))}
-            className={`flex w-full items-start gap-3 rounded-2xl border p-3 text-left transition ${
+            className={`flex items-start gap-2 rounded-2xl border p-3 transition ${
               warm[i] ? "border-accent/60 bg-accent-soft" : "border-line bg-surface"
             }`}
           >
-            <span
-              className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border ${
-                warm[i] ? "border-accent bg-accent text-black" : "border-line"
-              }`}
+            <button
+              onClick={() => setWarm((prev) => prev.map((b, j) => (j === i ? !b : b)))}
+              className="flex flex-1 items-start gap-3 text-left"
             >
-              {warm[i] && <Check size={13} />}
-            </span>
-            <span>
-              <span className="text-sm text-ink">{t(p.exercise)}</span>
-              <span className="block text-xs text-muted">{t(p.detail)}</span>
-            </span>
-          </button>
+              <span
+                className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border ${
+                  warm[i] ? "border-accent bg-accent text-black" : "border-line"
+                }`}
+              >
+                {warm[i] && <Check size={13} />}
+              </span>
+              <span>
+                <span className="text-sm text-ink">{t(p.exercise)}</span>
+                <span className="block text-xs text-muted">{t(p.detail)}</span>
+              </span>
+            </button>
+            <ExerciseImages name={p.exercise} />
+          </div>
         ))}
       </div>
       <p className="mt-3 rounded-xl bg-accent-soft p-3 text-xs text-muted">{t(note)}</p>
@@ -634,33 +674,61 @@ function RestTimer({ auto }: { auto: { secs: number; n: number } | null }) {
   const presets = [45, 60, 90];
   const [secs, setSecs] = useState(0);
   const [running, setRunning] = useState(false);
-  const ref = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Real-clock deadline, not a counter ticked down blindly: phones
+  // pause/throttle setInterval in the background, so a naive counter drifts.
+  // With a target timestamp, the remaining time is always recomputed from
+  // Date.now(), regardless of how many ticks were missed in the background.
+  const endAtRef = useRef<number | null>(null);
 
   // Auto-start when logging the reps of a set
   useEffect(() => {
     if (auto && auto.secs > 0) {
+      endAtRef.current = Date.now() + auto.secs * 1000;
       setSecs(auto.secs);
       setRunning(true);
     }
   }, [auto?.n]); // eslint-disable-line
 
   useEffect(() => {
-    if (running) {
-      ref.current = setInterval(() => {
-        setSecs((s) => {
-          if (s <= 1) {
-            setRunning(false);
-            restAlarm();
-            return 0;
-          }
-          return s - 1;
-        });
-      }, 1000);
-    }
+    if (!running) return;
+    const tick = () => {
+      if (endAtRef.current == null) return;
+      const left = Math.max(0, Math.round((endAtRef.current - Date.now()) / 1000));
+      setSecs(left);
+      if (left <= 0) {
+        setRunning(false);
+        restAlarm();
+      }
+    };
+    tick(); // corrects immediately, covers returning from the background
+    const id = setInterval(tick, 1000);
+    document.addEventListener("visibilitychange", tick);
     return () => {
-      if (ref.current) clearInterval(ref.current);
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", tick);
     };
   }, [running]);
+
+  function start(newSecs: number) {
+    endAtRef.current = Date.now() + newSecs * 1000;
+    setSecs(newSecs);
+    setRunning(true);
+  }
+
+  function toggle() {
+    if (running) {
+      setRunning(false); // pause: secs stays at the last computed value
+    } else if (secs > 0) {
+      endAtRef.current = Date.now() + secs * 1000; // resume from where it was
+      setRunning(true);
+    }
+  }
+
+  function reset() {
+    endAtRef.current = null;
+    setSecs(0);
+    setRunning(false);
+  }
 
   const mmss = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
 
@@ -675,26 +743,20 @@ function RestTimer({ auto }: { auto: { secs: number; n: number } | null }) {
         {presets.map((p) => (
           <button
             key={p}
-            onClick={() => {
-              setSecs(p);
-              setRunning(true);
-            }}
+            onClick={() => start(p)}
             className="rounded-lg border border-line px-2.5 py-1.5 text-xs text-muted active:scale-95"
           >
             {p}s
           </button>
         ))}
         <button
-          onClick={() => setRunning((r) => !r)}
+          onClick={toggle}
           className="grid h-9 w-9 place-items-center rounded-lg bg-accent text-black"
         >
           {running ? <Pause size={16} /> : <Play size={16} />}
         </button>
         <button
-          onClick={() => {
-            setSecs(0);
-            setRunning(false);
-          }}
+          onClick={reset}
           className="grid h-9 w-9 place-items-center rounded-lg border border-line text-muted"
         >
           <RotateCcw size={15} />
