@@ -21,7 +21,7 @@ import {
 import { useActivePlan } from "@/lib/user-content";
 import { useStore } from "@/lib/store";
 import type { ExerciseLog, SetLog, WorkoutLog, Session, Plan } from "@/lib/types";
-import { uid, todayISO, bestSet, fmtDate, parseTimeSec, cn } from "@/lib/utils";
+import { uid, todayISO, bestSet, fmtDate, parseTimeSec, isBodyweightOnly, cn } from "@/lib/utils";
 import ExerciseImages from "@/components/ExerciseImages";
 import PlateCalc from "@/components/PlateCalc";
 import { useT } from "@/lib/i18n";
@@ -285,6 +285,7 @@ function SessionPlayer({ session, plan }: { session: Session; plan: Plan }) {
               const pr = prMap.get(ej.name);
               const sug = suggestions.get(ej.name);
               const timedSecs = parseTimeSec(ej.reps);
+              const bodyweightOnly = timedSecs == null && isBodyweightOnly(ej.name);
               const exSets = logs[ei]?.sets ?? [];
               const allDone = exSets.length > 0 && exSets.every((s) => s.reps !== "");
               return (
@@ -328,6 +329,15 @@ function SessionPlayer({ session, plan }: { session: Session; plan: Plan }) {
                           <span className="w-6 text-center text-xs text-muted">{si + 1}</span>
                           <TimedSetPill
                             targetSecs={timedSecs}
+                            value={s.reps}
+                            onChange={(v) => updateSet(ei, si, "reps", v)}
+                          />
+                        </div>
+                      ) : bodyweightOnly ? (
+                        <div key={si} className="flex items-center gap-2">
+                          <span className="w-6 text-center text-xs text-muted">{si + 1}</span>
+                          <NumInput
+                            placeholder="reps"
                             value={s.reps}
                             onChange={(v) => updateSet(ei, si, "reps", v)}
                           />

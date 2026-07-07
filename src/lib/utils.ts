@@ -35,11 +35,42 @@ export function dayName(d: Date = new Date()) {
 }
 
 // Detects a plan's reps field for a held-for-time exercise (planks, holds...),
-// e.g. "30s" or "20 s/side" — returns the target seconds, or null if it's a
-// normal rep-based exercise.
+// e.g. "30s", "20 s/side" or a range like "20-30s" (target = the upper bound)
+// — returns the target seconds, or null if it's a normal rep-based exercise.
 export function parseTimeSec(reps: string): number | null {
-  const m = reps.trim().match(/^(\d+)\s*s(\/\w+)?$/i);
-  return m ? parseInt(m[1], 10) : null;
+  const m = reps.trim().match(/^(\d+)(?:\s*[-–—]\s*(\d+))?\s*s(\/\w+)?$/i);
+  if (!m) return null;
+  return parseInt(m[2] ?? m[1], 10);
+}
+
+// Exercise names that are always bodyweight-only in this app's plans (no
+// external load to log) — detected by name rather than a plan field, so it
+// applies retroactively to plans already saved by existing users too.
+const BODYWEIGHT_PATTERNS = [
+  /push-?up/i,
+  /pull-?up/i,
+  /chin-?up/i,
+  /sit-?up/i,
+  /crunch/i,
+  /mountain climbers?/i,
+  /superman/i,
+  /dead ?bug/i,
+  /step-?up/i,
+  /bodyweight squat/i,
+  /air squat/i,
+  /bench dips?/i,
+  /tricep dips?/i,
+  /glute bridge/i,
+  /burpee/i,
+  /jumping jacks?/i,
+  /high knees/i,
+  /bear crawl/i,
+  /inverted row/i,
+  /bird ?dog/i,
+];
+
+export function isBodyweightOnly(name: string): boolean {
+  return BODYWEIGHT_PATTERNS.some((re) => re.test(name));
 }
 
 // Best set of an exercise (highest kg, ties broken by reps)

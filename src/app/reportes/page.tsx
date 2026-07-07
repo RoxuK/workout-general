@@ -7,7 +7,7 @@ import { effectiveStartingWeight, latestWeight } from "@/lib/content";
 import { useActivePlan, useRecipes } from "@/lib/user-content";
 import { useT } from "@/lib/i18n";
 import { useStore } from "@/lib/store";
-import { bestSet, fmtDate, parseTimeSec } from "@/lib/utils";
+import { bestSet, fmtDate, parseTimeSec, isBodyweightOnly } from "@/lib/utils";
 import { exportExcel } from "@/lib/export-excel";
 
 export default function Reportes() {
@@ -50,15 +50,19 @@ export default function Reportes() {
       ? (rpeVals.reduce((a, b) => a + b, 0) / rpeVals.length).toFixed(1)
       : "—";
 
-    // Exercise names held for time (planks, hollow body hold...), detected from
-    // the active plan's reps field — these get compared/ranked by seconds
-    // held instead of kg, and "0 kg x reps" doesn't mean anything for them.
+    // Exercise names held for time (planks, hollow body hold...) or done
+    // bodyweight-only (push-ups, mountain climbers...), detected from the
+    // active plan's reps field / exercise name — "0 kg x reps" doesn't mean
+    // anything for either, and comparisons/ranking use reps, not kg.
     const timedExercises = new Set<string>();
+    const bodyweightExercises = new Set<string>();
     for (const sess of plan.sessions) {
       for (const ex of sess.exercises) {
         if (parseTimeSec(ex.reps) != null) timedExercises.add(ex.name);
+        else if (isBodyweightOnly(ex.name)) bodyweightExercises.add(ex.name);
       }
     }
+    const usesReps = (name: string) => timedExercises.has(name) || bodyweightExercises.has(name);
 
     // Best sets per exercise in the period
     const prMap = new Map<string, { kg: number; reps: number }>();
@@ -67,7 +71,7 @@ export default function Reportes() {
         const b = bestSet(e.sets);
         if (!b) continue;
         const cur = prMap.get(e.name);
-        const better = !cur || (timedExercises.has(e.name) ? b.reps > cur.reps : b.kg > cur.kg);
+        const better = !cur || (usesReps(e.name) ? b.reps > cur.reps : b.kg > cur.kg);
         if (better) prMap.set(e.name, b);
       }
     }
@@ -100,13 +104,18 @@ export default function Reportes() {
       L.push(`## Best sets this period`);
       Array.from(prMap.entries())
         .sort((a, b) => {
-          const av = timedExercises.has(a[0]) ? a[1].reps : a[1].kg;
-          const bv = timedExercises.has(b[0]) ? b[1].reps : b[1].kg;
+          const av = usesReps(a[0]) ? a[1].reps : a[1].kg;
+          const bv = usesReps(b[0]) ? b[1].reps : b[1].kg;
           return bv - av;
         })
-        .forEach(([n, b]) =>
-          L.push(`- ${n}: **${timedExercises.has(n) ? `${b.reps} s` : `${b.kg} kg × ${b.reps}`}**`)
-        );
+        .forEach(([n, b]) => {
+          const label = timedExercises.has(n)
+            ? `${b.reps} s`
+            : bodyweightExercises.has(n)
+            ? `${b.reps} reps`
+            : `${b.kg} kg × ${b.reps}`;
+          L.push(`- ${n}: **${label}**`);
+        });
       L.push(``);
     }
     L.push(`## Nutrition`);
