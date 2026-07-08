@@ -21,7 +21,7 @@ import {
 import { useActivePlan } from "@/lib/user-content";
 import { useStore } from "@/lib/store";
 import type { ExerciseLog, SetLog, WorkoutLog, Session, Plan } from "@/lib/types";
-import { uid, todayISO, bestSet, fmtDate, parseTimeSec, isBodyweightOnly, cn } from "@/lib/utils";
+import { uid, dayKey, dateToISO, bestSet, fmtDate, parseTimeSec, isBodyweightOnly, cn } from "@/lib/utils";
 import ExerciseImages from "@/components/ExerciseImages";
 import PlateCalc from "@/components/PlateCalc";
 import { useT } from "@/lib/i18n";
@@ -103,6 +103,7 @@ function SessionPlayer({ session, plan }: { session: Session; plan: Plan }) {
   const [soreness, setSoreness] = useState(4);
   const [notes, setNotes] = useState("");
   const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [date, setDate] = useState(() => dayKey());
   const [saved, setSaved] = useState(false);
   const [done, setDone] = useState<Summary | null>(null);
   const [restReq, setRestReq] = useState<{ secs: number; n: number } | null>(null);
@@ -125,6 +126,12 @@ function SessionPlayer({ session, plan }: { session: Session; plan: Plan }) {
       setSoreness(draft.soreness);
       setNotes(draft.notes);
       setStartedAt(draft.startedAt);
+      setDate(draft.date ?? dayKey());
+    } else {
+      // Coming from the calendar to log a specific day (e.g. a past workout
+      // that never got saved), the link carries ?date=.
+      const dateParam = new URLSearchParams(window.location.search).get("date");
+      if (dateParam) setDate(dateParam);
     }
     setHydratedFromDraft(true);
   }, []); // eslint-disable-line
@@ -136,8 +143,8 @@ function SessionPlayer({ session, plan }: { session: Session; plan: Plan }) {
   // blank values from the first render.
   useEffect(() => {
     if (!hydratedFromDraft || saved) return;
-    setWorkoutDraft({ sessionId: session.id, phase, warm, logs, rpe, soreness, notes, startedAt });
-  }, [hydratedFromDraft, session.id, phase, warm, logs, rpe, soreness, notes, startedAt, saved, setWorkoutDraft]);
+    setWorkoutDraft({ sessionId: session.id, phase, warm, logs, rpe, soreness, notes, startedAt, date });
+  }, [hydratedFromDraft, session.id, phase, warm, logs, rpe, soreness, notes, startedAt, saved, setWorkoutDraft, date]);
 
   const allWarm = warm.every(Boolean);
 
@@ -158,7 +165,7 @@ function SessionPlayer({ session, plan }: { session: Session; plan: Plan }) {
   function save() {
     const w: WorkoutLog = {
       id: uid(),
-      date: todayISO(),
+      date: dateToISO(date),
       sessionId: session.id,
       sessionName: session.name,
       exercises: logs,
@@ -261,6 +268,17 @@ function SessionPlayer({ session, plan }: { session: Session; plan: Plan }) {
 
       <h1 className="mt-2 font-display text-3xl">{t(session.name)}</h1>
       <p className="text-sm text-muted">{t(session.focus)}</p>
+
+      <label className="mt-2 flex items-center gap-2 text-xs text-muted">
+        {t("Fecha del entreno:")}
+        <input
+          type="date"
+          value={date}
+          max={dayKey()}
+          onChange={(e) => setDate(e.target.value || dayKey())}
+          className="input w-auto py-1 text-xs"
+        />
+      </label>
 
       {phase === "warmup" ? (
         <Warmup

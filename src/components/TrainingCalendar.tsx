@@ -263,7 +263,7 @@ export default function TrainingCalendar() {
                 )}
                 {pickerSession && (
                   <Link
-                    href={`/entreno/${pickerSession}`}
+                    href={`/entreno/${pickerSession}?date=${picker}`}
                     className="btn-accent flex-1 justify-center gap-1 py-2 text-xs"
                   >
                     <Dumbbell size={13} /> {t("Entrenar")}

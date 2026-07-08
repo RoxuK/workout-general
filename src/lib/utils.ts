@@ -19,6 +19,12 @@ export function dayKey(d: Date = new Date()) {
   return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
 }
 
+// YYYY-MM-DD -> ISO datetime, for logging a workout on a past day (fixed
+// midday: avoids the timezone shifting it to the day before/after)
+export function dateToISO(date: string) {
+  return new Date(date + "T12:00:00").toISOString();
+}
+
 export function fmtDate(iso: string) {
   const d = new Date(iso);
   return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
@@ -67,6 +73,8 @@ const BODYWEIGHT_PATTERNS = [
   /bear crawl/i,
   /inverted row/i,
   /bird ?dog/i,
+  /hyper-?extensions?/i,
+  /back extensions?/i,
 ];
 
 export function isBodyweightOnly(name: string): boolean {

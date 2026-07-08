@@ -81,6 +81,7 @@ export type WorkoutDraft = {
   soreness: number;
   notes: string;
   startedAt: number | null; // Date.now() once the warmup is done
+  date: string; // YYYY-MM-DD of the day being logged (can be in the past)
 };
 
 export type BodyLog = {
