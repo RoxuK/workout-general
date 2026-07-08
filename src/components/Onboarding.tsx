@@ -173,6 +173,23 @@ function extractJson(raw: string): string {
   return json.replace(/,(\s*[}\]])/g, "$1");
 }
 
+// JSON.parse's error message includes a character offset (most browsers —
+// format varies by engine, e.g. Safari on iPhone differs from Chrome/V8).
+// Turn that into a line/column plus a short snippet of the actual text, so
+// whoever hits an error we didn't anticipate can pinpoint and fix it
+// themselves instead of having to send the whole file over.
+function describeParseError(text: string, e: unknown): string {
+  const message = e instanceof Error ? e.message : String(e);
+  const m = message.match(/position (\d+)/i);
+  if (!m) return message;
+  const pos = Math.min(parseInt(m[1], 10), text.length);
+  const before = text.slice(0, pos);
+  const line = before.split("\n").length;
+  const col = pos - before.lastIndexOf("\n");
+  const snippet = text.slice(Math.max(0, pos - 25), pos + 25).replace(/\s+/g, " ").trim();
+  return `${message} — line ${line}, column ${col}. Near: "…${snippet}…"`;
+}
+
 function validateConfig(data: unknown): string | null {
   if (!data || typeof data !== "object") return "Not a valid JSON object";
   const d = data as Record<string, unknown>;
@@ -236,10 +253,13 @@ export default function Onboarding() {
   function handleImport() {
     setError(null);
     let parsed: unknown;
+    const clean = extractJson(json);
     try {
-      parsed = JSON.parse(extractJson(json));
-    } catch {
-      setError("Could not parse JSON. Make sure you copied only the JSON block the AI gave you.");
+      parsed = JSON.parse(clean);
+    } catch (e) {
+      setError(
+        `Could not parse JSON. Make sure you copied only the JSON block the AI gave you.\n\nDetails: ${describeParseError(clean, e)}`
+      );
       return;
     }
     const err = validateConfig(parsed);
@@ -360,7 +380,7 @@ export default function Onboarding() {
           {error && (
             <div className="mt-3 flex items-start gap-2 rounded-xl border border-bad/30 bg-bad/10 px-4 py-3 text-sm text-bad">
               <AlertCircle size={16} className="mt-0.5 shrink-0" />
-              {error}
+              <span className="whitespace-pre-wrap break-words">{error}</span>
             </div>
           )}
 
