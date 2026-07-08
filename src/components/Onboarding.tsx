@@ -156,6 +156,20 @@ Rules for the JSON:
 
 Start the interview now.`;
 
+// People rarely copy just the fenced code block — they copy the AI's whole
+// reply, prose and all. Find the ```json fence anywhere in the pasted text
+// (not just at the very start/end), or fall back to the outermost {...} if
+// there's no fence at all.
+function extractJson(raw: string): string {
+  const trimmed = raw.trim();
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenced) return fenced[1].trim();
+  const first = trimmed.indexOf("{");
+  const last = trimmed.lastIndexOf("}");
+  if (first !== -1 && last > first) return trimmed.slice(first, last + 1);
+  return trimmed;
+}
+
 function validateConfig(data: unknown): string | null {
   if (!data || typeof data !== "object") return "Not a valid JSON object";
   const d = data as Record<string, unknown>;
@@ -220,9 +234,7 @@ export default function Onboarding() {
     setError(null);
     let parsed: unknown;
     try {
-      // strip markdown code fences if the user copied the whole AI response
-      const clean = json.trim().replace(/^```json\s*/i, "").replace(/```\s*$/, "");
-      parsed = JSON.parse(clean);
+      parsed = JSON.parse(extractJson(json));
     } catch {
       setError("Could not parse JSON. Make sure you copied only the JSON block the AI gave you.");
       return;
