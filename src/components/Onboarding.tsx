@@ -140,6 +140,7 @@ After I answer ALL seventeen questions:
 \`\`\`
 
 Rules for the JSON:
+- The JSON must be strictly valid: NO trailing commas after the last item in any array or object, every string properly escaped (use \\n for line breaks and \\" for quotes inside a string, never a literal line break or unescaped quote), and no comments. Before you output the code block, mentally re-scan it end to end specifically for a trailing comma right before a closing } or ] — that is the single most common mistake in long JSON like this one
 - "sex" must be exactly "male", "female", or "other", taken directly from my answer to question 1
 - "goal" must be exactly one of "lose-fat", "build-muscle", "recomposition", "general-fitness", or "athletic-performance", taken from my answer to question 4 (pick the closest match)
 - "weeklySplit[].day" MUST use English day names: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
