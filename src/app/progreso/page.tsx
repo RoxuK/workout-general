@@ -79,14 +79,16 @@ export default function Progreso() {
       .map(([k, v]) => ({ week: fmtDate(k + "T00:00:00"), kg: Math.round(v) }));
   }, [workouts, mounted]);
 
-  // Strength PRs per exercise
+  // Strength PRs per exercise — only weighted lifts (bodyweight and timed
+  // holds have no external load, so a "0 kg × N" strength record is
+  // meaningless; they're excluded here just like in the per-exercise chart).
   const prs = useMemo(() => {
     if (!mounted) return [];
     const m = new Map<string, { kg: number; reps: number; date: string }>();
     for (const w of workouts) {
       for (const e of w.exercises) {
         const b = bestSet(e.sets);
-        if (!b) continue;
+        if (!b || b.kg <= 0) continue;
         const cur = m.get(e.name);
         if (!cur || b.kg > cur.kg || (b.kg === cur.kg && b.reps > cur.reps)) {
           m.set(e.name, { ...b, date: w.date });
@@ -334,7 +336,7 @@ export default function Progreso() {
   );
 }
 
-// ─── Editable workout row ─────────────────────────────────────────────────────────────
+// ─── Editable workout row ──────────────────────────────────────────────────
 
 function WorkoutRow({
   w,
@@ -455,7 +457,7 @@ function WorkoutRow({
   );
 }
 
-// ─── Progress photos ─────────────────────────────────────────────────────────────────
+// ─── Progress photos ────────────────────────────────────────────────────────
 
 function PhotosSection() {
   const t = useT();
