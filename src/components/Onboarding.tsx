@@ -163,11 +163,13 @@ Start the interview now.`;
 function extractJson(raw: string): string {
   const trimmed = raw.trim();
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  if (fenced) return fenced[1].trim();
-  const first = trimmed.indexOf("{");
-  const last = trimmed.lastIndexOf("}");
-  if (first !== -1 && last > first) return trimmed.slice(first, last + 1);
-  return trimmed;
+  const block = fenced ? fenced[1].trim() : trimmed;
+  const first = block.indexOf("{");
+  const last = block.lastIndexOf("}");
+  const json = first !== -1 && last > first ? block.slice(first, last + 1) : block;
+  // Trailing commas ("...},\n}") are invalid JSON but a common slip in long
+  // AI-generated output — never valid otherwise, so safe to always strip.
+  return json.replace(/,(\s*[}\]])/g, "$1");
 }
 
 function validateConfig(data: unknown): string | null {
