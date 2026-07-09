@@ -15,6 +15,24 @@ self.addEventListener("activate", (e) => {
   );
 });
 
+// Notificación push real del servidor (cron -> /api/push/tick -> web-push).
+// Es lo único que suena con la app cerrada — showTrigger (Notification
+// Triggers) ya no existe en Chrome.
+self.addEventListener("push", (e) => {
+  let data = {};
+  try {
+    data = e.data ? e.data.json() : {};
+  } catch {}
+  e.waitUntil(
+    self.registration.showNotification(data.title || "FitPlan", {
+      body: data.body,
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+      data: { url: data.url || "/" },
+    })
+  );
+});
+
 // Al pulsar una notificación, abre/enfoca la app.
 self.addEventListener("notificationclick", (e) => {
   e.notification.close();

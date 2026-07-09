@@ -7,11 +7,11 @@ import { useStore } from "@/lib/store";
 import { useT } from "@/lib/i18n";
 import {
   notifSupported,
-  triggersSupported,
   requestNotifPermission,
   scheduleReminders,
   testNotification,
 } from "@/lib/reminders";
+import { pushSupported, syncPushSubscription } from "@/lib/push-client";
 
 // JS getDay(): 0=Sunday … 6=Saturday
 const DAYS = [
@@ -37,6 +37,7 @@ export default function Recordatorios() {
     setPerm(p);
     if (p === "granted") {
       const res = await scheduleReminders(reminders);
+      await syncPushSubscription(reminders);
       flash(res.ok ? t("Notifications enabled and scheduled") : t("Enabled (this browser may not support background reminders)"));
     } else {
       flash(t("Permission denied. Enable it in your browser settings."));
@@ -53,7 +54,7 @@ export default function Recordatorios() {
   }
 
   const supported = mounted && notifSupported();
-  const bg = mounted && triggersSupported();
+  const bg = mounted && pushSupported();
 
   return (
     <div className="animate-fade-up">
@@ -89,7 +90,7 @@ export default function Recordatorios() {
           {perm === "granted" && !bg && (
             <div className="mt-3 flex items-start gap-2 rounded-xl border border-warn/40 bg-warn/10 p-3 text-xs text-muted">
               <AlertTriangle size={14} className="mt-0.5 shrink-0 text-warn" />
-              {t("This browser can't schedule notifications while the app is closed (Chrome removed that feature). Reminders will fire on time while the app is open — even installed as a PWA, background reminders would need a push server.")}
+              {t("This browser doesn't support push notifications, so reminders will only fire while the app is open. Try Chrome or Edge — on iPhone, add the app to your home screen first.")}
             </div>
           )}
         </div>
