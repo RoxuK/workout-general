@@ -161,39 +161,39 @@ body {
 }
 
 /* ── Halo del cronómetro en marcha ───────────────────────────────────────
-   Un destello sutil que recorre el borde del temporizador mientras cuenta.
-   Gira todo el pseudo-elemento con `transform: rotate()` en vez de animar
-   el ángulo del conic-gradient vía @property: transform tiene soporte
-   universal (se anima igual en cualquier móvil), mientras que animar una
-   custom property necesita que el navegador la tenga registrada — si no,
-   la interpolación es discreta y el giro se ve congelado. */
-@keyframes halo-spin {
-  to {
-    transform: rotate(360deg);
-  }
+   Un anillo que hace un pulso suave (escala + opacidad) alrededor del
+   temporizador mientras cuenta. Antes probamos un giro con conic-gradient
+   enmascarado (necesita mask-composite + @property/transform animados a la
+   vez), pero esa combinación no renderiza igual en todos los navegadores
+   móviles. Escala + opacidad son las dos propiedades más baratas de animar
+   que existen en CSS — se aceleran por GPU en cualquier dispositivo, sin
+   depender de máscaras ni de soporte de custom properties. */
+.halo-ring {
+  position: relative;
 }
 .halo-ring::before {
   content: "";
   position: absolute;
-  inset: -2.5px;
+  inset: -3px;
   border-radius: 19px;
-  padding: 2.5px;
-  background: conic-gradient(
-    from 0deg,
-    transparent 0%,
-    var(--accent) 12%,
-    transparent 28%
-  );
-  /* Máscara "solo el anillo": recorta el relleno y deja el borde */
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  mask-composite: exclude;
-  animation: halo-spin 2.4s linear infinite;
+  border: 2px solid var(--accent);
+  opacity: 0.55;
+  animation: halo-pulse 1.8s ease-out infinite;
   pointer-events: none;
 }
 .rounded-full.halo-ring::before {
   border-radius: 9999px;
+}
+@keyframes halo-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  70%,
+  100% {
+    transform: scale(1.08);
+    opacity: 0;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .halo-ring::before {
