@@ -168,9 +168,11 @@ body {
    móviles. Escala + opacidad son las dos propiedades más baratas de animar
    que existen en CSS — se aceleran por GPU en cualquier dispositivo, sin
    depender de máscaras ni de soporte de custom properties. */
-.halo-ring {
-  position: relative;
-}
+/* No `position: relative` here on purpose: both places this class is used
+   already establish a positioning context on their own (the session bar is
+   `sticky`, the floating pill is `relative`) — forcing `relative` here would
+   silently overwrite `sticky` (same CSS property, same specificity), which
+   is exactly the bug that broke the session bar sticking to the top. */
 .halo-ring::before {
   content: "";
   position: absolute;
