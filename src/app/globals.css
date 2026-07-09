@@ -161,44 +161,50 @@ body {
 }
 
 /* ── Halo del cronómetro en marcha ───────────────────────────────────────
-   Un anillo que hace un pulso suave (escala + opacidad) alrededor del
-   temporizador mientras cuenta. Antes probamos un giro con conic-gradient
-   enmascarado (necesita mask-composite + @property/transform animados a la
-   vez), pero esa combinación no renderiza igual en todos los navegadores
-   móviles. Escala + opacidad son las dos propiedades más baratas de animar
-   que existen en CSS — se aceleran por GPU en cualquier dispositivo, sin
-   depender de máscaras ni de soporte de custom properties. */
-/* No `position: relative` here on purpose: both places this class is used
-   already establish a positioning context on their own (the session bar is
-   `sticky`, the floating pill is `relative`) — forcing `relative` here would
-   silently overwrite `sticky` (same CSS property, same specificity), which
-   is exactly the bug that broke the session bar sticking to the top. */
-.halo-ring::before {
-  content: "";
+   Un punto que recorre las cuatro esquinas de la barra mientras cuenta.
+   Descartado `conic-gradient` + rotate: el degradado se pintaba fuera de su
+   propia caja en el navegador real (bug de renderizado reproducido también
+   aquí, no solo en el móvil) — nada que pudiéramos arreglar con ajustes.
+   Esto anima solo `top`/`left` en porcentaje, sin gradientes, sin máscaras,
+   sin transform: es la animación CSS más básica que existe, así que es la
+   que menos margen tiene para romperse de forma rara en un navegador móvil.
+   El punto (.halo-dot) es un span real en el DOM, no un pseudo-elemento —
+   se coloca ANTES del contenido real de la barra para pintarse detrás. */
+.halo-dot {
   position: absolute;
-  inset: -3px;
-  border-radius: 19px;
-  border: 2px solid var(--accent);
-  opacity: 0.55;
-  animation: halo-pulse 1.8s ease-out infinite;
+  width: 6px;
+  height: 6px;
+  margin: -3px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 5px 1px var(--accent);
   pointer-events: none;
+  animation: halo-lap 2.4s linear infinite;
 }
-.rounded-full.halo-ring::before {
-  border-radius: 9999px;
-}
-@keyframes halo-pulse {
+@keyframes halo-lap {
   0% {
-    transform: scale(1);
-    opacity: 0.55;
+    top: 0%;
+    left: 0%;
   }
-  70%,
+  25% {
+    top: 0%;
+    left: 100%;
+  }
+  50% {
+    top: 100%;
+    left: 100%;
+  }
+  75% {
+    top: 100%;
+    left: 0%;
+  }
   100% {
-    transform: scale(1.08);
-    opacity: 0;
+    top: 0%;
+    left: 0%;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .halo-ring::before {
-    animation: none;
+  .halo-dot {
+    animation-duration: 6s;
   }
 }

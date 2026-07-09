@@ -84,8 +84,9 @@ export function RestTimerBar() {
   const shown = mounted ? secs : 0;
 
   return (
-    <div className={`sticky top-2 z-30 mt-4 ${mounted && running ? "halo-ring" : ""}`}>
-      <div className="flex items-center justify-between rounded-2xl border border-line bg-surface-2/90 p-2 backdrop-blur">
+    <div className="sticky top-2 z-30 mt-4">
+      {mounted && running && <span className="halo-dot" />}
+      <div className="relative flex items-center justify-between rounded-2xl border border-line bg-surface-2/90 p-2 backdrop-blur">
         <div className="flex items-center gap-2 pl-1">
           <Timer size={18} className="text-accent" />
           <span className="font-display text-2xl tabular-nums">{fmtSecs(shown)}</span>
@@ -153,7 +154,8 @@ function FloatingPill() {
 
   return (
     <div className="fixed bottom-24 left-1/2 z-40 -translate-x-1/2">
-      <div className={`relative flex items-center gap-2 rounded-full border border-line bg-surface-2/95 py-1.5 pl-3 pr-1.5 shadow-lg backdrop-blur ${running ? "halo-ring" : ""}`}>
+      <div className="relative flex items-center gap-2 rounded-full border border-line bg-surface-2/95 py-1.5 pl-3 pr-1.5 shadow-lg backdrop-blur">
+        {running && <span className="halo-dot" />}
         {draft ? (
           <Link href={`/entreno/${draft.sessionId}`} className="active:scale-95">
             {time}
