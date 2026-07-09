@@ -81,7 +81,7 @@ export default function Nutricion() {
   );
 }
 
-// ─── MacroTracker ────────────────────────────────────────────────────────────────
+// ─── MacroTracker ──────────────────────────────────────────────────────────
 
 function MacroTracker() {
   const today = dayKey();
@@ -188,7 +188,7 @@ function MacroBar({
   );
 }
 
-// ─── Recipe book ───────────────────────────────────────────────────────────────────
+// ─── Recipe book ────────────────────────────────────────────────────────────
 
 function Recetario() {
   const recipes = useRecipes();
@@ -327,7 +327,7 @@ function RecetaCard({
   );
 }
 
-// ─── Shopping list ───────────────────────────────────────────────────────────────
+// ─── Shopping list ──────────────────────────────────────────────────────────
 
 function ShoppingListSection() {
   const list = useShoppingList();
@@ -369,7 +369,7 @@ function ShoppingListSection() {
   );
 }
 
-// ─── UI helpers ────────────────────────────────────────────────────────────────────
+// ─── UI helpers ─────────────────────────────────────────────────────────────
 
 function Macro({ label, g, color }: { label: string; g: number; color: string }) {
   return (

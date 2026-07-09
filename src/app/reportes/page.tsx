@@ -3,11 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Copy, Download, Share2, Check, FileSpreadsheet } from "lucide-react";
 import Header from "@/components/Header";
-import { effectiveStartingWeight, latestWeight } from "@/lib/content";
 import { useActivePlan, useRecipes } from "@/lib/user-content";
 import { useT } from "@/lib/i18n";
 import { useStore } from "@/lib/store";
-import { bestSet, fmtDate, parseTimeSec, isBodyweightOnly } from "@/lib/utils";
+import { buildReportMd } from "@/lib/report";
 import { exportExcel } from "@/lib/export-excel";
 
 export default function Reportes() {
@@ -30,130 +29,11 @@ export default function Reportes() {
     if (!mounted) return "";
     const since = new Date();
     since.setDate(since.getDate() - weeks * 7);
-
-    const wk = workouts.filter((w) => new Date(w.date) >= since);
-    const bl = bodyLogs.filter((b) => new Date(b.date) >= since);
-    const nut = Object.values(nutrition).filter((n) => new Date(n.date) >= since);
-
-    const baseWeight = effectiveStartingWeight(plan, bodyLogs, planStart);
-    const lastWeight = latestWeight(bodyLogs);
-    const totalLost = lastWeight != null ? baseWeight - lastWeight : 0;
-
-    const cleanDays = nut.filter((n) => n.cleanDay).length;
-    const adherence = nut.length ? Math.round((cleanDays / nut.length) * 100) : 0;
-    const sorenessVals = wk.filter((w) => w.soreness != null).map((w) => w.soreness as number);
-    const sorenessAvg = sorenessVals.length
-      ? (sorenessVals.reduce((a, b) => a + b, 0) / sorenessVals.length).toFixed(1)
-      : "—";
-    const rpeVals = wk.filter((w) => w.rpe != null).map((w) => w.rpe as number);
-    const rpeAvg = rpeVals.length
-      ? (rpeVals.reduce((a, b) => a + b, 0) / rpeVals.length).toFixed(1)
-      : "—";
-
-    // Exercise names held for time (planks, hollow body hold...) or done
-    // bodyweight-only (push-ups, mountain climbers...), detected from the
-    // active plan's reps field / exercise name — "0 kg x reps" doesn't mean
-    // anything for either, and comparisons/ranking use reps, not kg.
-    const timedExercises = new Set<string>();
-    const bodyweightExercises = new Set<string>();
-    for (const sess of plan.sessions) {
-      for (const ex of sess.exercises) {
-        if (parseTimeSec(ex.reps) != null) timedExercises.add(ex.name);
-        else if (isBodyweightOnly(ex.name)) bodyweightExercises.add(ex.name);
-      }
-    }
-    const usesReps = (name: string) => timedExercises.has(name) || bodyweightExercises.has(name);
-
-    // Best sets per exercise in the period
-    const prMap = new Map<string, { kg: number; reps: number }>();
-    for (const w of wk) {
-      for (const e of w.exercises) {
-        const b = bestSet(e.sets);
-        if (!b) continue;
-        const cur = prMap.get(e.name);
-        const better = !cur || (usesReps(e.name) ? b.reps > cur.reps : b.kg > cur.kg);
-        if (better) prMap.set(e.name, b);
-      }
-    }
-
-    const L: string[] = [];
-    L.push(`# Training report`);
-    L.push(`**Period:** last ${weeks} weeks · generated ${fmtDate(new Date().toISOString())}`);
-    L.push(`**Plan:** ${plan.name}`);
-    L.push(``);
-    L.push(`## Weight and composition`);
-    L.push(`- Starting weight: **${baseWeight} kg** · target **${plan.targetWeight} kg**`);
-    L.push(`- Latest weight: **${lastWeight != null ? lastWeight + " kg" : "not logged"}**`);
-    L.push(`- Total lost: **${totalLost > 0 ? "−" + totalLost.toFixed(1) + " kg" : "—"}**`);
-    if (bl.length) {
-      L.push(`- Weigh-ins in this period:`);
-      bl.forEach((b) => L.push(`  - ${fmtDate(b.date)}: ${b.weight !== "" ? b.weight + " kg" : "—"}${b.waist !== "" ? `, waist ${b.waist} cm` : ""}${b.bodyFat !== "" ? `, body fat ${b.bodyFat}%` : ""}`));
-    }
-    L.push(``);
-    L.push(`## Workouts (${wk.length})`);
-    L.push(`- Average RPE: **${rpeAvg}** · Average soreness rating: **${sorenessAvg}/5**`);
-    if (wk.length) {
-      wk.forEach((w) => {
-        L.push(`- **${fmtDate(w.date)} · ${w.sessionName}** — RPE ${w.rpe ?? "—"}, soreness ${w.soreness ?? "—"}/5${w.notes ? ` — _${w.notes}_` : ""}`);
-      });
-    } else {
-      L.push(`- No workouts logged in this period.`);
-    }
-    L.push(``);
-    if (prMap.size) {
-      L.push(`## Best sets this period`);
-      Array.from(prMap.entries())
-        .sort((a, b) => {
-          const av = usesReps(a[0]) ? a[1].reps : a[1].kg;
-          const bv = usesReps(b[0]) ? b[1].reps : b[1].kg;
-          return bv - av;
-        })
-        .forEach(([n, b]) => {
-          const label = timedExercises.has(n)
-            ? `${b.reps} s`
-            : bodyweightExercises.has(n)
-            ? `${b.reps} reps`
-            : `${b.kg} kg × ${b.reps}`;
-          L.push(`- ${n}: **${label}**`);
-        });
-      L.push(``);
-    }
-    L.push(`## Nutrition`);
-    L.push(`- Days logged: ${nut.length} · clean days: ${cleanDays}`);
-    L.push(`- **Adherence: ${adherence}%**`);
-    L.push(`- Protein met: ${nut.filter((n) => n.proteinGoalMet).length}/${nut.length} · Hydration met: ${nut.filter((n) => n.hydrationGoalMet).length}/${nut.length} · Sleep met: ${nut.filter((n) => n.sleepGoalMet).length}/${nut.length}`);
-    L.push(`- Cravings: ${nut.filter((n) => n.craving).length}`);
-    L.push(``);
-
-    // Food diary (recipes + free meals)
-    const recipeById = new Map(recipes.map((r) => [r.id, r]));
-    const diaryDays = Array.from(new Set([...Object.keys(freeMeals), ...Object.keys(recipesEaten)]))
-      .filter((date) => new Date(date) >= since && ((freeMeals[date]?.length ?? 0) > 0 || (recipesEaten[date]?.length ?? 0) > 0))
-      .sort((a, b) => (a > b ? -1 : 1));
-
-    if (diaryDays.length > 0) {
-      L.push(`## Food diary`);
-      for (const date of diaryDays) {
-        const meals = freeMeals[date] ?? [];
-        const eatenRecipes = (recipesEaten[date] ?? []).map((id) => recipeById.get(id)).filter((r): r is NonNullable<typeof r> => !!r);
-        const totalKcal = meals.reduce((s, x) => s + x.kcal, 0) + eatenRecipes.reduce((s, r) => s + r.kcal, 0);
-        const totals = [
-          ...meals.map((x) => ({ p: x.p, c: x.c, g: x.g })),
-          ...eatenRecipes.map((r) => ({ p: r.protein, c: r.carbs, g: r.fats })),
-        ].reduce((acc, x) => ({ p: acc.p + x.p, c: acc.c + x.c, g: acc.g + x.g }), { p: 0, c: 0, g: 0 });
-        L.push(`### ${fmtDate(date)} · ${Math.round(totalKcal)} kcal · ${totals.p}P/${totals.c}C/${totals.g}G`);
-        const items = [
-          ...eatenRecipes.map((r) => `${r.name} (${r.kcal} kcal · ${r.protein}P/${r.carbs}C/${r.fats}G)`),
-          ...meals.map((x) => `${x.name} (${x.kcal} kcal · ${x.p}P/${x.c}C/${x.g}G)`),
-        ];
-        L.push(`- ${items.join(", ")}`);
-      }
-      L.push(``);
-    }
-
-    L.push(`---`);
-    L.push(`_Use this to adjust load, calories and the next phase._`);
-    return L.join("\n");
+    return buildReportMd(
+      { plan, planStart, workouts, bodyLogs, nutrition, freeMeals, recipes, recipesEaten },
+      since,
+      `last ${weeks} weeks`
+    );
   }, [mounted, weeks, workouts, bodyLogs, nutrition, freeMeals, recipesEaten, recipes, plan, planStart]);
 
   async function copy() {

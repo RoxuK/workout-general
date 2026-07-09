@@ -46,6 +46,21 @@ function primaryName(name: string): string {
   return noParens.split(/\bor\b/i)[0].trim() || noParens;
 }
 
+// Curated fixes where the fuzzy match fails: "Side Plank" matched the regular
+// Plank (free-exercise-db calls it "Side Bridge"), and the hollow body hold
+// has no photo in the db at all, so we ship a local illustration.
+const IMAGE_OVERRIDES: Record<string, string[]> = {
+  "side plank": cdnImages("Side_Bridge", 2),
+  "hollow body hold": ["/exercises/hollow-body-hold.svg"],
+  "hollow hold": ["/exercises/hollow-body-hold.svg"],
+};
+
+function cdnImages(id: string, n: number): string[] {
+  return Array.from({ length: n }, (_, i) =>
+    `https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/${id}/${i}.jpg`
+  );
+}
+
 const indexCache = new Map<string, { id: string; n: number } | null>();
 
 function findMatch(name: string): { id: string; n: number } | null {
@@ -80,11 +95,11 @@ function findMatch(name: string): { id: string; n: number } | null {
 }
 
 export function imagesFor(name: string): string[] {
+  const override = IMAGE_OVERRIDES[normalize(primaryName(name))];
+  if (override) return override;
   const match = findMatch(name);
   if (!match) return [];
-  return Array.from({ length: match.n }, (_, i) =>
-    `https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/${match.id}/${i}.jpg`
-  );
+  return cdnImages(match.id, match.n);
 }
 
 // Used before onboarding finishes (the page tree still renders behind the
@@ -145,6 +160,36 @@ export function currentPhase(plan: Plan, today = new Date(), override?: string |
   return plan.phases[plan.phases.length - 1]?.name;
 }
 
+// Last week number of a phase ("1–3" -> 3, "5" -> 5).
+function phaseEndWeek(weeks: string) {
+  const parts = weeks.split(/[–-]/).map((s) => parseInt(s.trim(), 10));
+  return parts[parts.length - 1] || parts[0] || 0;
+}
+
+// Phase whose FINAL week the given date falls in, or null. Drives the
+// "phase completed — prepare the next one" notice on the workout-saved screen.
+export function finalWeekPhase(plan: Plan, override: string | null | undefined, date = new Date()) {
+  if (!plan.phases.length || !planStarted(plan, override, date)) return null;
+  const week = planWeek(plan, date, override);
+  for (let i = 0; i < plan.phases.length; i++) {
+    if (week === phaseEndWeek(plan.phases[i].weeks)) return { index: i, name: plan.phases[i].name };
+  }
+  return null;
+}
+
+// Most recent phase already fully behind today (its last week is over), or
+// null if we're still inside the first phase. Drives the persistent
+// "prepare next phase" card until the new plan gets imported.
+export function lastEndedPhase(plan: Plan, override: string | null | undefined, today = new Date()) {
+  if (!plan.phases.length || !planStarted(plan, override, today)) return null;
+  const week = planWeek(plan, today, override);
+  let ended: { index: number; name: string } | null = null;
+  plan.phases.forEach((f, i) => {
+    if (week > phaseEndWeek(f.weeks)) ended = { index: i, name: f.name };
+  });
+  return ended;
+}
+
 // Has the plan started yet? (true if the effective start date is today or earlier)
 export function planStarted(plan: Plan, override?: string | null, today = new Date()) {
   const start = new Date(effectiveStartDate(plan, override));
@@ -178,7 +223,7 @@ export function latestWeight(bodyLogs: BodyLog[]): number | null {
   return weights[0]?.weight ?? null;
 }
 
-// ── Menstrual cycle ────────────────────────────────────────────────────────
+// ── Menstrual cycle ──────────────────────────────────────────────────────────
 // Ported from ena-fit (C:\workout Ena\ena-fit\src\lib\content.ts), trimmed to
 // just the tracking math — no steps/activity logic from that app.
 

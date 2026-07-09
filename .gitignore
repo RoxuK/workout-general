@@ -28,12 +28,12 @@ yarn-error.log*
 # vercel
 .vercel
 
+# generated exercise catalog (run scripts/build-exercise-catalog.mjs to regenerate)
+content/knowledge/ejercicios-catalogo.json
+exdb.tmp.json
+
 # typescript
 *.tsbuildinfo
 .claude/
 
 .vercel
-
-# generated exercise catalog (run scripts/build-exercise-catalog.mjs to regenerate)
-content/knowledge/ejercicios-catalogo.json
-exdb.tmp.json

@@ -10,6 +10,7 @@ import { dayName, dayKey } from "@/lib/utils";
 import { useT, useLang } from "@/lib/i18n";
 import Ring from "@/components/Ring";
 import ResumeBanner from "@/components/ResumeBanner";
+import { PhaseEndCard } from "@/components/PhaseHandoff";
 import TrainingCalendar from "@/components/TrainingCalendar";
 import Trophies from "@/components/Trophies";
 import WeeklySummary from "@/components/WeeklySummary";
@@ -83,6 +84,9 @@ export default function Dashboard() {
       </header>
 
       <ResumeBanner mounted={mounted} />
+
+      {/* Phase over → prepare the next block with the AI coach */}
+      <PhaseEndCard mounted={mounted} />
 
       {/* Today's session */}
       <section className="mt-6">

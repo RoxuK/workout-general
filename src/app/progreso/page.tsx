@@ -15,6 +15,7 @@ import {
 import Link from "next/link";
 import { Plus, Trash2, Trophy, Dumbbell, LineChart as LineChartIcon, Camera, X, Images, ClipboardCheck, ChevronRight, Pencil, Check } from "lucide-react";
 import Header from "@/components/Header";
+import { NextPhaseImport } from "@/components/PhaseHandoff";
 import { useActivePlan } from "@/lib/user-content";
 import { useStore } from "@/lib/store";
 import type { BodyLog } from "@/lib/types";
@@ -147,6 +148,9 @@ export default function Progreso() {
           <ChevronRight size={18} className="text-muted" />
         </Link>
       )}
+
+      {/* Phase handoff: copy report for the AI coach / paste next block */}
+      <NextPhaseImport mounted={mounted} />
 
       {/* Weight chart */}
       <div className="card">

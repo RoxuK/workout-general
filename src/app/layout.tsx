@@ -6,6 +6,7 @@ import BottomNav from "@/components/BottomNav";
 import RegisterSW from "@/components/RegisterSW";
 import ReminderScheduler from "@/components/ReminderScheduler";
 import ThemeLoader from "@/components/ThemeLoader";
+import FloatingRestTimer from "@/components/RestTimer";
 
 const display = Fraunces({
   subsets: ["latin"],
@@ -50,6 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <RegisterSW />
         <ReminderScheduler />
         <main className="mx-auto min-h-dvh w-full max-w-app px-4 pb-28">{children}</main>
+        <FloatingRestTimer />
         <BottomNav />
         <AppGate />
       </body>

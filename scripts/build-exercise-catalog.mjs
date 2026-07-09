@@ -29,4 +29,4 @@ const out = d.map(x => ({
 
 const path = "content/knowledge/ejercicios-catalogo.json";
 writeFileSync(path, JSON.stringify(out, null, 0));
-console.log(`Written ${out.length} exercises to ${path}`);
+console.log(`Written ${out.length} exercises to ${path} (${Math.round(out.length / 1024 * 300)} KB)`);

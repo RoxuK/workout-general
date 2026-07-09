@@ -77,6 +77,36 @@ export async function scheduleReminders(reminders: Reminder[]) {
   return { ok: true as const };
 }
 
+// Chrome retiró la Notification Triggers API, así que sin un servidor push
+// los recordatorios solo pueden dispararse mientras la app está abierta:
+// se programa la próxima ocurrencia (dentro de 24 h) de cada uno con
+// setTimeout. ponytail: para avisos con la app cerrada hace falta Web Push
+// (servidor + almacén de suscripciones + cron).
+export function scheduleInAppFallback(reminders: Reminder[]): number[] {
+  if (!notifSupported() || Notification.permission !== "granted" || triggersSupported()) return [];
+  const ids: number[] = [];
+  for (const r of reminders) {
+    if (!r.enabled) continue;
+    const next = nextOccurrences(r.time, r.weekday)[0];
+    if (!next || next - Date.now() > 86400000) continue;
+    ids.push(
+      window.setTimeout(async () => {
+        try {
+          const reg = await navigator.serviceWorker.ready;
+          await reg.showNotification(r.label, {
+            tag: `rem-${r.id}`,
+            body: r.body,
+            icon: "/icon-192.png",
+            badge: "/icon-192.png",
+            data: { url: r.url ?? "/" },
+          });
+        } catch {}
+      }, next - Date.now())
+    );
+  }
+  return ids;
+}
+
 export async function testNotification() {
   if (!notifSupported() || Notification.permission !== "granted") return false;
   const reg = await navigator.serviceWorker.ready;

@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 260">
+  <!-- Hollow body hold: tumbada boca arriba, lumbar pegada al suelo,
+       hombros y piernas elevados, brazos extendidos por detrás de la cabeza -->
+  <rect width="480" height="260" fill="#ffffff"/>
+
+  <!-- suelo -->
+  <line x1="28" y1="212" x2="452" y2="212" stroke="#d8d2c8" stroke-width="5" stroke-linecap="round"/>
+
+  <!-- extremidades traseras (más claras, dan profundidad) -->
+  <line x1="180" y1="180" x2="98" y2="146" stroke="#a49e93" stroke-width="7" stroke-linecap="round"/>
+  <line x1="317" y1="192" x2="432" y2="152" stroke="#a49e93" stroke-width="7" stroke-linecap="round"/>
+
+  <!-- brazo delantero, extendido por detrás de la cabeza -->
+  <line x1="178" y1="174" x2="92" y2="134" stroke="#2b2b2e" stroke-width="8" stroke-linecap="round"/>
+
+  <!-- tronco: curva con la zona lumbar apoyada en el suelo -->
+  <path d="M180,178 C210,198 225,207 252,208 C280,207 300,197 315,186"
+        fill="none" stroke="#2b2b2e" stroke-width="8" stroke-linecap="round"/>
+
+  <!-- piernas elevadas + pie -->
+  <line x1="315" y1="186" x2="430" y2="142" stroke="#2b2b2e" stroke-width="8" stroke-linecap="round"/>
+  <line x1="430" y1="142" x2="440" y2="131" stroke="#2b2b2e" stroke-width="7" stroke-linecap="round"/>
+
+  <!-- cabeza (rellena de blanco: queda por delante del brazo), barbilla recogida -->
+  <circle cx="150" cy="157" r="17" fill="#ffffff" stroke="#2b2b2e" stroke-width="7"/>
+
+  <!-- indicaciones: hombros y pies se elevan, la lumbar presiona el suelo -->
+  <g stroke="#d8a84e" stroke-width="5" stroke-linecap="round" fill="none">
+    <path d="M126,200 v-14 m-7,7 l7,-7 l7,7"/>
+    <path d="M408,196 v-14 m-7,7 l7,-7 l7,7"/>
+  </g>
+  <g stroke="#80b387" stroke-width="5" stroke-linecap="round" fill="none">
+    <path d="M250,226 v14 m-7,-7 l7,7 l7,-7"/>
+  </g>
+</svg>

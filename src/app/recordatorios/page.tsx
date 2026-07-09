@@ -89,7 +89,7 @@ export default function Recordatorios() {
           {perm === "granted" && !bg && (
             <div className="mt-3 flex items-start gap-2 rounded-xl border border-warn/40 bg-warn/10 p-3 text-xs text-muted">
               <AlertTriangle size={14} className="mt-0.5 shrink-0 text-warn" />
-              {t("This browser doesn't support scheduled background notifications. Reminders work best with the PWA installed on Chrome/Android.")}
+              {t("This browser can't schedule notifications while the app is closed (Chrome removed that feature). Reminders will fire on time while the app is open — even installed as a PWA, background reminders would need a push server.")}
             </div>
           )}
         </div>

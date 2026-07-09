@@ -24,7 +24,13 @@ type State = {
   planStart: string | null;                // YYYY-MM-DD — real date the user starts the plan
   schedule: Record<string, string>;        // dayKey -> sessionId the user decides to train that day
   workoutDraft: WorkoutDraft | null;       // in-progress workout, so it isn't lost if the tab unloads
+  // Global rest timer: lives in the store (persisted) so it keeps running
+  // when navigating to other tabs or if the PWA reloads. `endAt` is a real
+  // clock deadline (running); `pausedLeft` holds the remaining secs (paused).
+  rest: { endAt: number | null; pausedLeft: number | null };
   cycles: CycleLog[];                      // menstrual cycle log (shown only for sex: "female")
+  planArchive: { archivedAt: string; config: UserConfig }[]; // previous blocks, kept when importing the next phase
+  dismissedPhaseNotice: string | null;     // "planId#phaseIndex" the user chose to hide
   cycleAvgLength: number;                  // days, observed or default estimate
   periodLength: number;                    // days
   _hydrated: boolean;
@@ -53,6 +59,11 @@ type State = {
 
   setWorkoutDraft: (d: WorkoutDraft | null) => void;
 
+  startRest: (secs: number) => void;
+  pauseRest: () => void;
+  resumeRest: () => void;
+  resetRest: () => void;
+
   addCycle: (c: CycleLog) => void;
   deleteCycle: (id: string) => void;
   setCycleSettings: (patch: Partial<Pick<State, "cycleAvgLength" | "periodLength">>) => void;
@@ -70,11 +81,13 @@ type State = {
   userConfig: UserConfig | null;
   setUserName: (name: string) => void;
   setUserConfig: (config: UserConfig) => void;
+  replacePlan: (config: UserConfig) => void;
+  dismissPhaseNotice: (key: string) => void;
   clearPlan: () => void;
   resetUser: () => void;
 };
 
-const empty = { workouts: [], bodyLogs: [], nutrition: {}, freeMeals: {}, recipesEaten: {}, planStart: null, schedule: {}, workoutDraft: null as WorkoutDraft | null, cycles: [] as CycleLog[] };
+const empty = { workouts: [], bodyLogs: [], nutrition: {}, freeMeals: {}, recipesEaten: {}, planStart: null, schedule: {}, workoutDraft: null as WorkoutDraft | null, rest: { endAt: null as number | null, pausedLeft: null as number | null }, cycles: [] as CycleLog[], planArchive: [] as { archivedAt: string; config: UserConfig }[], dismissedPhaseNotice: null as string | null };
 const emptyUser = { userName: null, userConfig: null };
 
 export const useStore = create<State>()(
@@ -145,6 +158,21 @@ export const useStore = create<State>()(
 
       setWorkoutDraft: (d) => set({ workoutDraft: d }),
 
+      startRest: (secs) => set({ rest: { endAt: Date.now() + secs * 1000, pausedLeft: null } }),
+      pauseRest: () =>
+        set((s) =>
+          s.rest.endAt == null
+            ? s
+            : { rest: { endAt: null, pausedLeft: Math.max(0, Math.round((s.rest.endAt - Date.now()) / 1000)) } }
+        ),
+      resumeRest: () =>
+        set((s) =>
+          !s.rest.pausedLeft
+            ? s
+            : { rest: { endAt: Date.now() + s.rest.pausedLeft * 1000, pausedLeft: null } }
+        ),
+      resetRest: () => set({ rest: { endAt: null, pausedLeft: null } }),
+
       updateReminder: (id, patch) =>
         set((s) => ({
           reminders: s.reminders.map((r) => (r.id === id ? { ...r, ...patch } : r)),
@@ -171,6 +199,19 @@ export const useStore = create<State>()(
 
       setUserName: (name) => set({ userName: name }),
       setUserConfig: (config) => set({ userConfig: config }),
+      // Importing the next phase/block: archives the outgoing config (all
+      // logged history lives outside userConfig, so it's untouched) and
+      // restarts the plan clock at the new block's start date.
+      replacePlan: (config) =>
+        set((s) => ({
+          planArchive: s.userConfig
+            ? [...s.planArchive, { archivedAt: new Date().toISOString(), config: s.userConfig }]
+            : s.planArchive,
+          userConfig: config,
+          planStart: config.plan.startDate || dayKey(),
+          dismissedPhaseNotice: null,
+        })),
+      dismissPhaseNotice: (key) => set({ dismissedPhaseNotice: key }),
       // Drops only the plan/nutrition config, keeping the name and all logged
       // history — used by "Generate plan with AI" in Settings to re-run the
       // onboarding flow without wiping the user's data.

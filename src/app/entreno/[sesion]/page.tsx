@@ -6,10 +6,6 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Flame,
-  Timer,
-  Play,
-  Pause,
-  RotateCcw,
   Check,
   AlertTriangle,
   ChevronLeft,
@@ -23,7 +19,8 @@ import { useStore } from "@/lib/store";
 import type { ExerciseLog, SetLog, WorkoutLog, Session, Plan } from "@/lib/types";
 import { uid, dayKey, dateToISO, bestSet, fmtDate, parseTimeSec, isBodyweightOnly, cn } from "@/lib/utils";
 import ExerciseImages from "@/components/ExerciseImages";
-import PlateCalc from "@/components/PlateCalc";
+import { RestTimerBar, restAlarm } from "@/components/RestTimer";
+import { PhaseSaveNotice } from "@/components/PhaseHandoff";
 import { useT } from "@/lib/i18n";
 
 // Keeps the screen on during the workout (Screen Wake Lock API).
@@ -106,8 +103,8 @@ function SessionPlayer({ session, plan }: { session: Session; plan: Plan }) {
   const [date, setDate] = useState(() => dayKey());
   const [saved, setSaved] = useState(false);
   const [done, setDone] = useState<Summary | null>(null);
-  const [restReq, setRestReq] = useState<{ secs: number; n: number } | null>(null);
   const [hydratedFromDraft, setHydratedFromDraft] = useState(false);
+  const startRest = useStore((s) => s.startRest);
 
   // Screen stays on while training (not during warmup or once finished)
   useWakeLock(phase === "work" && !done);
@@ -152,7 +149,7 @@ function SessionPlayer({ session, plan }: { session: Session; plan: Plan }) {
     // Starting the rest timer for the exercise the moment reps are logged
     if (field === "reps" && value !== "" && logs[ei]?.sets[si]?.reps === "") {
       const d = parseInt(session.exercises[ei]?.rest ?? "", 10);
-      if (d > 0) setRestReq((r) => ({ secs: d, n: (r?.n ?? 0) + 1 }));
+      if (d > 0) startRest(d);
     }
     setLogs((prev) => {
       const next = prev.map((e) => ({ ...e, sets: e.sets.map((s) => ({ ...s })) }));
@@ -295,7 +292,7 @@ function SessionPlayer({ session, plan }: { session: Session; plan: Plan }) {
         />
       ) : (
         <>
-          <RestTimer auto={restReq} />
+          <RestTimerBar />
 
           <div className="mt-4 space-y-4">
             {session.exercises.map((ej, ei) => {
@@ -439,7 +436,7 @@ function SessionPlayer({ session, plan }: { session: Session; plan: Plan }) {
         </>
       )}
 
-      {done && <DoneOverlay summary={done} sessionName={session.name} />}
+      {done && <DoneOverlay summary={done} sessionName={session.name} date={date} />}
     </div>
   );
 }
@@ -465,7 +462,7 @@ function volumeOf(exercises: ExerciseLog[]) {
   return v;
 }
 
-function DoneOverlay({ summary, sessionName }: { summary: Summary; sessionName: string }) {
+function DoneOverlay({ summary, sessionName, date }: { summary: Summary; sessionName: string; date: string }) {
   const t = useT();
   const diff = summary.previousVolume != null ? summary.volume - summary.previousVolume : null;
 
@@ -531,6 +528,9 @@ function DoneOverlay({ summary, sessionName }: { summary: Summary; sessionName: 
             </div>
           </div>
         )}
+
+        {/* Final week of a phase → nudge to prepare the next block */}
+        <PhaseSaveNotice date={date} />
 
         <div className="mt-7 space-y-2">
           <Link href="/progreso" className="btn-accent w-full">{t("Ver mi progreso")}</Link>
@@ -705,121 +705,6 @@ function Warmup({
       <button onClick={onStart} className="mt-2 w-full text-center text-xs text-muted underline">
         {t("Saltar calentamiento (no recomendado)")}
       </button>
-    </div>
-  );
-}
-
-function restAlarm() {
-  try {
-    navigator.vibrate?.([200, 120, 200]);
-  } catch {}
-  try {
-    const Ctx = window.AudioContext || (window as any).webkitAudioContext;
-    const ctx = new Ctx();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.frequency.value = 880;
-    o.connect(g);
-    g.connect(ctx.destination);
-    g.gain.setValueAtTime(0.12, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
-    o.start();
-    o.stop(ctx.currentTime + 0.6);
-  } catch {}
-}
-
-function RestTimer({ auto }: { auto: { secs: number; n: number } | null }) {
-  const presets = [45, 60, 90];
-  const [secs, setSecs] = useState(0);
-  const [running, setRunning] = useState(false);
-  // Real-clock deadline, not a counter ticked down blindly: phones
-  // pause/throttle setInterval in the background, so a naive counter drifts.
-  // With a target timestamp, the remaining time is always recomputed from
-  // Date.now(), regardless of how many ticks were missed in the background.
-  const endAtRef = useRef<number | null>(null);
-
-  // Auto-start when logging the reps of a set
-  useEffect(() => {
-    if (auto && auto.secs > 0) {
-      endAtRef.current = Date.now() + auto.secs * 1000;
-      setSecs(auto.secs);
-      setRunning(true);
-    }
-  }, [auto?.n]); // eslint-disable-line
-
-  useEffect(() => {
-    if (!running) return;
-    const tick = () => {
-      if (endAtRef.current == null) return;
-      const left = Math.max(0, Math.round((endAtRef.current - Date.now()) / 1000));
-      setSecs(left);
-      if (left <= 0) {
-        setRunning(false);
-        restAlarm();
-      }
-    };
-    tick(); // corrects immediately, covers returning from the background
-    const id = setInterval(tick, 1000);
-    document.addEventListener("visibilitychange", tick);
-    return () => {
-      clearInterval(id);
-      document.removeEventListener("visibilitychange", tick);
-    };
-  }, [running]);
-
-  function start(newSecs: number) {
-    endAtRef.current = Date.now() + newSecs * 1000;
-    setSecs(newSecs);
-    setRunning(true);
-  }
-
-  function toggle() {
-    if (running) {
-      setRunning(false); // pause: secs stays at the last computed value
-    } else if (secs > 0) {
-      endAtRef.current = Date.now() + secs * 1000; // resume from where it was
-      setRunning(true);
-    }
-  }
-
-  function reset() {
-    endAtRef.current = null;
-    setSecs(0);
-    setRunning(false);
-  }
-
-  const mmss = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
-
-  return (
-    <div className="sticky top-2 z-30 mt-4 flex items-center justify-between rounded-2xl border border-line bg-surface-2/90 p-2 backdrop-blur">
-      <div className="flex items-center gap-2 pl-1">
-        <Timer size={18} className="text-accent" />
-        <span className="font-display text-2xl tabular-nums">{mmss}</span>
-      </div>
-      <div className="flex items-center gap-1">
-        <PlateCalc />
-        {presets.map((p) => (
-          <button
-            key={p}
-            onClick={() => start(p)}
-            className="rounded-lg border border-line px-2.5 py-1.5 text-xs text-muted active:scale-95"
-          >
-            {p}s
-          </button>
-        ))}
-        <button
-          onClick={toggle}
-          className="grid h-9 w-9 place-items-center rounded-lg bg-accent text-black"
-        >
-          {running ? <Pause size={16} /> : <Play size={16} />}
-        </button>
-        <button
-          onClick={reset}
-          className="grid h-9 w-9 place-items-center rounded-lg border border-line text-muted"
-        >
-          <RotateCcw size={15} />
-        </button>
-      </div>
     </div>
   );
 }

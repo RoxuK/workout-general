@@ -22,7 +22,7 @@ function daysAgo(n: number, hour = 12, min = 0) {
 function buildDemo(plan: ReturnType<typeof useStore.getState>["userConfig"]) {
   const sessions = plan?.plan.sessions.filter((s) => !s.travel) ?? [];
 
-  // ── Workouts: 3 weeks back with a +2.5 kg/week progression ─────────────────
+  // ── Workouts: 3 weeks back with a +2.5 kg/week progression ───────────────
   const workouts: WorkoutLog[] = [];
   if (sessions.length) {
     for (let ago = 21; ago >= 1; ago--) {
@@ -57,7 +57,7 @@ function buildDemo(plan: ReturnType<typeof useStore.getState>["userConfig"]) {
     }
   }
 
-  // ── Weigh-ins: every 3 days, 86.0 → 84.5 kg ─────────────────────────────
+  // ── Weigh-ins: every 3 days, 86.0 → 84.5 kg ───────────────────────────────
   const weights = [86.0, 85.7, 85.5, 85.3, 85.0, 84.9, 84.7, 84.5];
   const bodyLogs: BodyLog[] = weights.map((weight, i) => {
     const date = daysAgo(21 - i * 3, 8, 0);

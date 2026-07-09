@@ -39,7 +39,7 @@ export default function CheckIn() {
     setSaved(f);
   }
 
-  // ── Result screen ───────────────────────────────────────────────────────────
+  // ── Result screen ───────────────────────────────────────────────────────
   if (saved) {
     const newWeight = saved.weight !== "" ? Number(saved.weight) : null;
     // The real previous weigh-in: excluding the one we just saved
@@ -73,7 +73,7 @@ export default function CheckIn() {
     );
   }
 
-  // ── Wizard ──────────────────────────────────────────────────────────────
+  // ── Wizard ───────────────────────────────────────────────────────────────
   return (
     <div className="animate-fade-up">
       <Header eyebrow="2 minutes, done" title="Check-in" back="/" />
