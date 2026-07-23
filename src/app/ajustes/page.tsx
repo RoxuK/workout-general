@@ -89,8 +89,10 @@ export default function Ajustes() {
     reader.readAsText(file);
   }
 
+  // Translate here rather than at each call site: every flash message is a
+  // Spanish literal, and they were all showing in Spanish under English.
   function flash(text: string, ok = true) {
-    setMsg({ text, ok });
+    setMsg({ text: t(text), ok });
     setTimeout(() => setMsg(null), ok ? 1800 : 4000);
   }
 
@@ -171,7 +173,7 @@ export default function Ajustes() {
         <input ref={fileRef} type="file" accept="application/json" onChange={onImport} className="hidden" />
         <button
           onClick={() => {
-            if (confirm("¿Borrar TODOS tus registros locales? Esto no se puede deshacer.")) {
+            if (confirm(t("¿Borrar TODOS tus registros locales? Esto no se puede deshacer."))) {
               clearAll();
               flash("Datos borrados");
             }
