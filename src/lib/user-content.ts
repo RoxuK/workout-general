@@ -1,6 +1,8 @@
 "use client";
 
+import { useMemo } from "react";
 import { useStore } from "./store";
+import { normalizeRecipes } from "./plan-import";
 import { EMPTY_PLAN, EMPTY_NUTRITION, EMPTY_RECIPES, EMPTY_SHOPPING_LIST } from "./content";
 import type { Plan, NutritionTargets, Recipe, ShoppingCategory } from "./types";
 
@@ -14,9 +16,11 @@ export function useNutritionTargets(): NutritionTargets {
   return userConfig?.nutrition ?? EMPTY_NUTRITION;
 }
 
+// Normalized on read too, not just on import: a config saved before the
+// importer normalized would otherwise stay broken until the user re-imports.
 export function useRecipes(): Recipe[] {
-  const userConfig = useStore((s) => s.userConfig);
-  return userConfig?.recipes ?? EMPTY_RECIPES;
+  const recipes = useStore((s) => s.userConfig?.recipes);
+  return useMemo(() => (recipes ? normalizeRecipes(recipes) : EMPTY_RECIPES), [recipes]);
 }
 
 export function useShoppingList(): ShoppingCategory[] {

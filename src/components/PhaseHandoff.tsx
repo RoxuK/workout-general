@@ -16,7 +16,7 @@ import { ClipboardCopy, Check, X, Sparkles, AlertCircle } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { finalWeekPhase, lastEndedPhase } from "@/lib/content";
 import { buildHandoffText } from "@/lib/report";
-import { extractJson, describeParseError, validateConfig } from "@/lib/plan-import";
+import { extractJson, describeParseError, validateConfig, normalizeConfig } from "@/lib/plan-import";
 import { useT } from "@/lib/i18n";
 import type { UserConfig } from "@/lib/types";
 
@@ -138,8 +138,7 @@ export function NextPhaseImport({ mounted }: { mounted: boolean }) {
       setError(`${t("Plan no válido:")} ${err}`);
       return;
     }
-    const config = parsed as UserConfig;
-    replacePlan({ ...config, recipes: config.recipes ?? [], shoppingList: config.shoppingList ?? [] });
+    replacePlan(normalizeConfig(parsed as UserConfig));
     setJson("");
     setDone(true);
     setTimeout(() => setDone(false), 3000);

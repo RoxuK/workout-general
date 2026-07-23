@@ -212,6 +212,7 @@ Rules for the JSON:
 - Include 3–5 sessions matching the days/minutes I confirmed in question 5, each with 6–8 exercises adapted to my equipment; keep a "travel": true bodyweight session if I still need one
 - "nutrition": recompute the targets from MEASURED reality, not a formula — use the real maintenance you estimated in PART 1 (weight trend + logged intake) and my answers about hunger and adherence. If adherence was low, prefer a smaller, sustainable adjustment over a bigger theoretical one. Explain the exact reasoning in "nutrition.note"
 - "recipes": keep the ones I said I actually cook, drop the ones I never made, and add new ones for variety based on question 8 — still at least 5 different recipes for EACH meal moment I eat (roughly 25–35 total), respecting my allergies, dislikes and real prep time. Any single day's combination should roughly hit the new "nutrition" targets
+- Every recipe MUST use exactly these keys, no substitutes: "id" (unique slug), "name", "moment" ("Breakfast"/"Lunch"/"Dinner"/"Snack"/"Pre-workout"/"Post-workout"), "time" (e.g. "10 min"), "kcal", "protein", "carbs", "fats", "ingredients" (array of strings), "steps" (array of strings). Do NOT use "meal", "prepMinutes" or "instructions"
 - Rebuild "shoppingList" by aggregating the ingredients of the FINAL recipe list into a few sensible categories
 - "weeklySplit[].day" MUST use English day names, and keep the same split structure only if the results and my answers support it
 

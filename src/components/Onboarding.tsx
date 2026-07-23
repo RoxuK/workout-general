@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { ClipboardCopy, Check, AlertCircle, ArrowRight } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { buildDefaultConfig } from "@/lib/default-plan";
-import { extractJson, describeParseError, validateConfig } from "@/lib/plan-import";
+import { extractJson, describeParseError, validateConfig, normalizeConfig } from "@/lib/plan-import";
 import type { UserConfig } from "@/lib/types";
 
 // The prompt the user copies into an AI chat assistant (Claude, ChatGPT, Gemini,
@@ -216,12 +216,7 @@ export default function Onboarding() {
       setError(`Invalid plan: ${err}. Ask the AI to regenerate the JSON block.`);
       return;
     }
-    const config = parsed as UserConfig;
-    setUserConfig({
-      ...config,
-      recipes: config.recipes ?? [],
-      shoppingList: config.shoppingList ?? [],
-    });
+    setUserConfig(normalizeConfig(parsed as UserConfig));
   }
 
   return (

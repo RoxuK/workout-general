@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Download, Upload, Trash2, Smartphone, Check, Bell, ChevronRight, FileSpreadsheet, Palette, Sparkles } from "lucide-react";
+import { Download, Upload, Trash2, Smartphone, Check, Bell, ChevronRight, FileSpreadsheet, Palette, Sparkles, FileJson, AlertTriangle } from "lucide-react";
 import Header from "@/components/Header";
 import { useStore } from "@/lib/store";
 import { useActivePlan, useRecipes } from "@/lib/user-content";
+import { extractJson, describeParseError, validateConfig, normalizeConfig } from "@/lib/plan-import";
+import type { UserConfig } from "@/lib/types";
 import { exportExcel } from "@/lib/export-excel";
 import { THEMES, getTheme, applyTheme, type ThemeId } from "@/lib/theme";
 import { useT } from "@/lib/i18n";
@@ -28,7 +30,7 @@ export default function Ajustes() {
   const recipes = useRecipes();
   const t = useT();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [msg, setMsg] = useState("");
+  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
 
   function exportar() {
     const data = { version: 7, exportedAt: new Date().toISOString(), workouts, bodyLogs, nutrition, freeMeals, recipesEaten, planStart, schedule, cycles };
@@ -47,7 +49,7 @@ export default function Ajustes() {
       await exportExcel({ plan, planStart, workouts, bodyLogs, nutrition, freeMeals, recipes, recipesEaten });
       flash("Excel descargado");
     } catch {
-      flash("No se pudo generar el Excel");
+      flash("No se pudo generar el Excel", false);
     }
   }
 
@@ -58,6 +60,17 @@ export default function Ajustes() {
     reader.onload = () => {
       try {
         const data = JSON.parse(String(reader.result));
+        // A plan JSON parses fine but has none of these keys, so the import
+        // used to no-op while still flashing "imported" — hence "nothing
+        // happens when I pick the file".
+        if (data.plan && !data.workouts && !data.bodyLogs) {
+          flash("Eso es un plan, no una copia. Usa \"Importar plan (JSON)\".", false);
+          return;
+        }
+        if (!data.workouts && !data.bodyLogs && !data.nutrition) {
+          flash("Ese archivo no es una copia de seguridad de FitPlan", false);
+          return;
+        }
         importData({
           workouts: data.workouts,
           bodyLogs: data.bodyLogs,
@@ -70,15 +83,15 @@ export default function Ajustes() {
         });
         flash("Datos importados");
       } catch {
-        flash("Archivo no válido");
+        flash("Archivo no válido", false);
       }
     };
     reader.readAsText(file);
   }
 
-  function flash(m: string) {
-    setMsg(m);
-    setTimeout(() => setMsg(""), 1800);
+  function flash(text: string, ok = true) {
+    setMsg({ text, ok });
+    setTimeout(() => setMsg(null), ok ? 1800 : 4000);
   }
 
   return (
@@ -86,8 +99,10 @@ export default function Ajustes() {
       <Header eyebrow="Tu app" title="Ajustes" back="/" />
 
       {msg && (
-        <div className="mb-4 flex items-center gap-2 rounded-xl border border-good/40 bg-good/10 p-3 text-sm text-good">
-          <Check size={16} /> {msg}
+        <div className={`mb-4 flex items-center gap-2 rounded-xl border p-3 text-sm ${
+          msg.ok ? "border-good/40 bg-good/10 text-good" : "border-bad/40 bg-bad/10 text-bad"
+        }`}>
+          {msg.ok ? <Check size={16} /> : <AlertTriangle size={16} />} {msg.text}
         </div>
       )}
 
@@ -131,6 +146,8 @@ export default function Ajustes() {
           <Sparkles size={18} /> Generate plan with AI
         </button>
       </div>
+
+      <ImportPlanCard />
 
       <div className="mt-4 card border-accent/30">
         <div className="mb-1 flex items-center gap-2 font-medium text-accent">
@@ -190,6 +207,94 @@ export default function Ajustes() {
         Privacy Policy
       </Link>
       <p className="mt-2 text-center text-[11px] text-muted">FitPlan — v0.1</p>
+    </div>
+  );
+}
+
+// Re-importing a plan used to be possible only by wiping the current one and
+// walking the whole onboarding again. Paste or pick a file, same parser as
+// onboarding and the phase handoff.
+function ImportPlanCard() {
+  const replacePlan = useStore((s) => s.replacePlan);
+  const t = useT();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [json, setJson] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  function importJson(raw: string) {
+    setError(null);
+    const clean = extractJson(raw);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(clean);
+    } catch (e) {
+      setError(`${t("No se pudo leer el JSON.")} ${describeParseError(clean, e)}`);
+      return;
+    }
+    // A backup file parses fine but has no "plan" — say so instead of the
+    // generic schema error, since the two import buttons are easy to mix up.
+    const d = parsed as Record<string, unknown>;
+    if (!d.plan && (d.workouts || d.bodyLogs)) {
+      setError(t("Esto es una copia de seguridad, no un plan. Usa \"Importar copia (.json)\"."));
+      return;
+    }
+    const err = validateConfig(parsed);
+    if (err) {
+      setError(`${t("Plan no válido:")} ${err}`);
+      return;
+    }
+    replacePlan(normalizeConfig(parsed as UserConfig));
+    setJson("");
+    setDone(true);
+    setTimeout(() => setDone(false), 3000);
+  }
+
+  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => importJson(String(reader.result));
+    reader.onerror = () => setError(t("No se pudo leer el archivo."));
+    reader.readAsText(file);
+    e.target.value = ""; // let the same file be picked again after a failure
+  }
+
+  return (
+    <div className="mt-4 card border-accent/30">
+      <div className="mb-1 flex items-center gap-2 font-medium text-accent">
+        <FileJson size={18} /> {t("Importar plan (JSON)")}
+      </div>
+      <p className="mb-3 text-xs text-muted">
+        {t("Pega el bloque JSON que te dio la IA, o elige el archivo. Reemplaza plan, nutrición, recetas y lista de la compra. Tus entrenos, pesajes e historial no se tocan.")}
+      </p>
+
+      <textarea
+        className="input w-full resize-none font-mono text-xs"
+        rows={5}
+        placeholder={t("Pega aquí el JSON...")}
+        value={json}
+        onChange={(e) => { setJson(e.target.value); setError(null); }}
+      />
+
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <button onClick={() => importJson(json)} disabled={!json.trim()} className="btn-accent justify-center gap-2 disabled:opacity-40">
+          <Check size={16} /> {t("Importar")}
+        </button>
+        <button onClick={() => fileRef.current?.click()} className="btn-ghost justify-center gap-2">
+          <Upload size={16} className="text-accent" /> {t("Elegir archivo")}
+        </button>
+      </div>
+      <input ref={fileRef} type="file" accept="application/json,.json,text/plain" onChange={onFile} className="hidden" />
+
+      {error && (
+        <p className="mt-3 whitespace-pre-wrap rounded-xl border border-bad/40 bg-bad/10 p-3 text-xs text-bad">{error}</p>
+      )}
+      {done && (
+        <p className="mt-3 flex items-center gap-2 rounded-xl border border-good/40 bg-good/10 p-3 text-xs text-good">
+          <Check size={14} /> {t("Plan importado")}
+        </p>
+      )}
     </div>
   );
 }

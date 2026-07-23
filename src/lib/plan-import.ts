@@ -1,6 +1,8 @@
 // Parsing + validation for AI-generated plan JSON. Shared by the onboarding
 // flow and the "import next phase" block in Progress.
 
+import type { Recipe, UserConfig } from "./types";
+
 // People rarely copy just the fenced code block — they copy the AI's whole
 // reply, prose and all. Find the ```json fence anywhere in the pasted text
 // (not just at the very start/end), or fall back to the outermost {...} if
@@ -32,6 +34,48 @@ export function describeParseError(text: string, e: unknown): string {
   const col = pos - before.lastIndexOf("\n");
   const snippet = text.slice(Math.max(0, pos - 25), pos + 25).replace(/\s+/g, " ").trim();
   return `${message} — line ${line}, column ${col}. Near: "…${snippet}…"`;
+}
+
+// The AI drifts off the recipe schema more often than any other part of the
+// config: it emits "meal"/"prepMinutes"/"instructions" instead of
+// "moment"/"time"/"steps", and drops "id" entirely. Missing ids made every
+// card share the same key (tapping + selected them all) and a missing "steps"
+// array crashed the page on open. Accept the aliases and always fill the
+// required fields, so a near-miss shape can never take the app down.
+export function normalizeRecipes(raw: unknown): Recipe[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((x, i) => {
+    const r = (x ?? {}) as Record<string, any>;
+    const name = String(r.name ?? `Recipe ${i + 1}`);
+    const steps = Array.isArray(r.steps)
+      ? r.steps.map(String)
+      : typeof r.instructions === "string"
+      ? r.instructions.split(/(?<=\.)\s+(?=[A-Z])/).filter(Boolean)
+      : [];
+    const minutes = r.prepMinutes ?? r.prepTime;
+    return {
+      id: String(r.id ?? `${i}-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`),
+      name,
+      moment: String(r.moment ?? r.meal ?? "Other").replace(/^./, (c) => c.toUpperCase()),
+      time: String(r.time ?? (minutes != null ? `${minutes} min` : "—")),
+      kcal: Number(r.kcal) || 0,
+      protein: Number(r.protein) || 0,
+      carbs: Number(r.carbs) || 0,
+      fats: Number(r.fats ?? r.fat) || 0,
+      ingredients: Array.isArray(r.ingredients) ? r.ingredients.map(String) : [],
+      steps,
+    };
+  });
+}
+
+export function normalizeConfig(config: UserConfig): UserConfig {
+  return {
+    ...config,
+    recipes: normalizeRecipes(config.recipes),
+    shoppingList: Array.isArray(config.shoppingList)
+      ? config.shoppingList.filter((c) => c && Array.isArray(c.items))
+      : [],
+  };
 }
 
 export function validateConfig(data: unknown): string | null {

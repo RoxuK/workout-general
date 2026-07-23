@@ -55,7 +55,15 @@ export default function Nutricion() {
           <Macro label={t("Carbos")} g={nut.carbs} color="var(--accent)" />
           <Macro label={t("Grasa")} g={nut.fats} color="var(--warn)" />
         </div>
-        {nut.note && <p className="mt-3 text-[11px] text-muted">{t(nut.note)}</p>}
+        {/* The AI's reasoning runs 200+ words — collapsed so it doesn't bury the page. */}
+        {nut.note && (
+          <details className="mt-3 border-t border-line pt-3">
+            <summary className="cursor-pointer list-none text-[11px] text-accent">
+              {t("Por qué estos números")}
+            </summary>
+            <p className="mt-2 text-[11px] leading-relaxed text-muted">{t(nut.note)}</p>
+          </details>
+        )}
       </div>
 
       {/* Today's macro tracker */}
