@@ -51,6 +51,10 @@ function primaryName(name: string): string {
 // has no photo in the db at all, so we ship a local illustration.
 const IMAGE_OVERRIDES: Record<string, string[]> = {
   "side plank": cdnImages("Side_Bridge", 2),
+  // "stationary bike" fuzzy-matches "Air Bike" (bicycle crunches) — wrong photo
+  "stationary bike": cdnImages("Bicycling_Stationary", 2),
+  "light stationary bike": cdnImages("Bicycling_Stationary", 2),
+  "easy stationary bike": cdnImages("Bicycling_Stationary", 2),
   "hollow body hold": ["/exercises/hollow-body-hold.svg"],
   "hollow hold": ["/exercises/hollow-body-hold.svg"],
 };

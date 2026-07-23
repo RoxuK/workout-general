@@ -77,7 +77,12 @@ const BODYWEIGHT_PATTERNS = [
   /back extensions?/i,
 ];
 
+// An explicit weight in the name ("Bird Dog with Light Dumbbell") beats the
+// pattern list — those variants do need a kg field.
+const WEIGHTED_HINTS = /dumbbell|kettlebell|barbell|weighted|mancuerna|pesa|lastre/i;
+
 export function isBodyweightOnly(name: string): boolean {
+  if (WEIGHTED_HINTS.test(name)) return false;
   return BODYWEIGHT_PATTERNS.some((re) => re.test(name));
 }
 

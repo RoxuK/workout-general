@@ -159,6 +159,14 @@ function SessionPlayer({ session, plan }: { session: Session; plan: Plan }) {
     });
   }
 
+  // One tap on the circled set number repeats the previous set's kg/reps
+  function copySet(ei: number, si: number) {
+    const prev = logs[ei]?.sets[si - 1];
+    if (!prev) return;
+    if (prev.kg !== "") updateSet(ei, si, "kg", String(prev.kg));
+    if (prev.reps !== "") updateSet(ei, si, "reps", String(prev.reps));
+  }
+
   function save() {
     const w: WorkoutLog = {
       id: uid(),
@@ -338,10 +346,28 @@ function SessionPlayer({ session, plan }: { session: Session; plan: Plan }) {
                   ) : null}
 
                   <div className="mt-3 space-y-2">
-                    {exSets.map((s, si) =>
-                      timedSecs != null ? (
+                    {exSets.map((s, si) => {
+                      // Previous set of this exercise: its values show as ghost
+                      // placeholders, and while the row is untouched the set
+                      // number becomes a tap-to-repeat button.
+                      const prevSet = si > 0 ? exSets[si - 1] : null;
+                      const prevDone =
+                        prevSet != null && prevSet.reps !== "" && (bodyweightOnly || prevSet.kg !== "");
+                      const canCopy = timedSecs == null && prevDone && s.kg === "" && s.reps === "";
+                      const num = canCopy ? (
+                        <button
+                          onClick={() => copySet(ei, si)}
+                          aria-label="Repeat previous set"
+                          className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-accent/60 text-xs text-accent active:scale-95"
+                        >
+                          {si + 1}
+                        </button>
+                      ) : (
+                        <span className="w-6 text-center text-xs text-muted">{si + 1}</span>
+                      );
+                      return timedSecs != null ? (
                         <div key={si} className="flex items-center gap-2">
-                          <span className="w-6 text-center text-xs text-muted">{si + 1}</span>
+                          {num}
                           <TimedSetPill
                             targetSecs={timedSecs}
                             value={s.reps}
@@ -350,30 +376,30 @@ function SessionPlayer({ session, plan }: { session: Session; plan: Plan }) {
                         </div>
                       ) : bodyweightOnly ? (
                         <div key={si} className="flex items-center gap-2">
-                          <span className="w-6 text-center text-xs text-muted">{si + 1}</span>
+                          {num}
                           <NumInput
-                            placeholder="reps"
+                            placeholder={prevSet && prevSet.reps !== "" ? String(prevSet.reps) : "reps"}
                             value={s.reps}
                             onChange={(v) => updateSet(ei, si, "reps", v)}
                           />
                         </div>
                       ) : (
                         <div key={si} className="flex items-center gap-2">
-                          <span className="w-6 text-center text-xs text-muted">{si + 1}</span>
+                          {num}
                           <NumInput
-                            placeholder="kg"
+                            placeholder={prevSet && prevSet.kg !== "" ? String(prevSet.kg) : "kg"}
                             value={s.kg}
                             onChange={(v) => updateSet(ei, si, "kg", v)}
                           />
                           <span className="text-muted">×</span>
                           <NumInput
-                            placeholder="reps"
+                            placeholder={prevSet && prevSet.reps !== "" ? String(prevSet.reps) : "reps"}
                             value={s.reps}
                             onChange={(v) => updateSet(ei, si, "reps", v)}
                           />
                         </div>
-                      )
-                    )}
+                      );
+                    })}
                   </div>
                 </div>
               );
